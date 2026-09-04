@@ -40,8 +40,13 @@ A Participant can:
 - View their race results and performance history
 
 ## CI/CD
+RaceDay uses GitHub Actions for Continuous Integration and Continuous Deployment (CI/CD).
 
-A GitHub Actions workflow is used to validate the structure of the RaceDay repository. The workflow checks that the required documentation and SQL files are included in the repository.
+The workflow automatically validates the structure of the repository whenever changes are pushed to GitHub. It checks that the required `/docs` folder and project documentation are included, such as the ERD, API Endpoint Plan and SQL database script.
+
+### Successful GitHub Actions Build
+
+The screenshot below shows that the GitHub Actions workflow completed successfully.
 
 ## YouTube Demonstration
 
