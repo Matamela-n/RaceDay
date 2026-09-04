@@ -52,5 +52,5 @@ The screenshot below shows that the GitHub Actions workflow completed successful
 
 ## YouTube Demonstration
 
-An unlisted YouTube video demonstrating the RaceDay planning documents, ERD, API Endpoint Plan and SQL database implementation can be viewed below:
+An unlisted YouTube video demonstrating the RaceDay planning documents, ERD, API Endpoint Plan and SQL database implementation can be viewed below: https://youtu.be/2rsqBKUHUBQ
 
