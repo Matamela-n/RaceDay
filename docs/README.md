@@ -44,6 +44,8 @@ RaceDay uses GitHub Actions for Continuous Integration and Continuous Deployment
 
 The workflow automatically validates the structure of the repository whenever changes are pushed to GitHub. It checks that the required `/docs` folder and project documentation are included, such as the ERD, API Endpoint Plan and SQL database script.
 
+
+
 ### Successful GitHub Actions Build
 
 The screenshot below shows that the GitHub Actions workflow completed successfully.
