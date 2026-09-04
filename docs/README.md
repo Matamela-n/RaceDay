@@ -43,10 +43,6 @@ A Participant can:
 
 A GitHub Actions workflow is used to validate the structure of the RaceDay repository. The workflow checks that the required documentation and SQL files are included in the repository.
 
-### Successful GitHub Actions Build
-
-![Successful GitHub Actions Build](docs/github-actions-success.png)
-
 ## YouTube Demonstration
 
 An unlisted YouTube video demonstrating the RaceDay planning documents, ERD, API Endpoint Plan and SQL database implementation can be viewed below:
