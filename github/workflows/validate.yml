@@ -1,0 +1,28 @@
+name: Validate RaceDay Repository
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check docs folder exists
+        run: test -d docs
+
+      - name: Check ERD file exists
+        run: test -f "docs/ERD STEP 1.DRAWIO.PNG"
+
+      - name: Check API endpoint plan exists
+        run: test -f "docs/api endpoint plan.pdf"
+
+      - name: Check SQL script exists
+        run: test -f "docs/RACEDAY.sql"
+
+      - name: Check docs README exists
+        run: test -f "docs/README.md"
