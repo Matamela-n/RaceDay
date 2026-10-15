@@ -1,8 +1,7 @@
 
-
 using Microsoft.EntityFrameworkCore;
+
 using RACEDAY_API_PROJECT.Data;
-using RACEDAY_API_PROJECT.Models;
 using Xunit;
 
 namespace RACEDAY_API_PROJECT.Tests
@@ -11,15 +10,15 @@ namespace RACEDAY_API_PROJECT.Tests
     {
         private RaceDayDbContext CreateContext()
         {
-            var options = new DbContextOptionsBuilder<RaceDayDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+         var options = new DbContextOptionsBuilder<RaceDayDbContext>()
+         .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
             return new RaceDayDbContext(options);
         }
 
         [Fact]
-        public void DatabaseContext_CanBeCreated()
+        public async Task DatabaseContext_CanBeCreated()
         {
             using var context = CreateContext();
 
@@ -34,7 +33,7 @@ namespace RACEDAY_API_PROJECT.Tests
         {
             using var context = CreateContext();
 
-            var participant = new Participant
+            var participant = new RACEDAY_API_PROJECT.Models.Participant
             {
                 firstName = "Test",
                 lastName = "Participant",
@@ -46,8 +45,7 @@ namespace RACEDAY_API_PROJECT.Tests
             await context.SaveChangesAsync();
 
             var savedParticipant = await context.Participants
-                .FirstOrDefaultAsync(
-                    p => p.email == "unit-test@example.com");
+                .FirstOrDefaultAsync(p => p.email == "unit-test@example.com");
 
             Assert.NotNull(savedParticipant);
             Assert.Equal("Test", savedParticipant.firstName);
@@ -55,3 +53,4 @@ namespace RACEDAY_API_PROJECT.Tests
         }
     }
 }
+
