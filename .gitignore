@@ -1,0 +1,15 @@
+﻿#Visual Studio 
+.vs/
+*.user
+*.suo
+
+#Build Output
+bin/
+obj/
+
+#IDE and test results
+TestResults/
+*.cache
+
+#Local configuration containing secrets
+appsettings.Development.json
