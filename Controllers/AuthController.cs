@@ -1,10 +1,11 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authentication;
+﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RACEDAY_API_PROJECT.Data;
 using RACEDAY_API_PROJECT.Models;
+using System.Net.Http;
 using System.Security.Claims;
 
 namespace RACEDAY_API_PROJECT.Controllers
@@ -223,18 +224,21 @@ namespace RACEDAY_API_PROJECT.Controllers
                 message = "Login successful.",
                 userID = userID,
                 email = email,
-                role = roleName
-            });
+role = roleName
+  });
         }
-[HttpPost("logout")]
-public async Task<IActionResult> Logout()
-{
-await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+  [HttpPost("logout")]
+ public async Task<IActionResult> Logout()
+        {
+  await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
 return Ok(new
 {
- message = "You have logged out successfully!"
+message = "You have logged out successfully!"
             });
         }
+
     }//end of controller
 
 
