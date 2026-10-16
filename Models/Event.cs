@@ -18,7 +18,11 @@ public DateTime eventDate { get; set; } // the DateTime is used represnt the tim
 public string location { get; set; } = string.Empty;
 
 [Required]
-public string eventType { get; set; } = string.Empty;
+[RegularExpression(
+"^(Run|Walk|Cycle)$",
+ErrorMessage = "Event type must be Run, Walk, or Cycle."
+)]
+        public string eventType { get; set; } = string.Empty;
 public string? description { get; set; }
 
 [Required]
