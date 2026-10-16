@@ -210,6 +210,17 @@ e.status
 .ToListAsync();
 return Ok(enrolments);
         }
+
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<Event>>> GetEvents()
+        {
+            var events = await _context.Events
+                .Include(e => e.Categories)
+                .ToListAsync();
+
+            return Ok(events);
+        }
+
     }
 }
 
