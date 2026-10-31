@@ -63,6 +63,7 @@ namespace RACEDAY_API_PROJECT.Controllers
 
         // GET: api/Enrolment/mine
         // A Participant can view all their own enrolments.
+
         [HttpGet("mine")]
         [Authorize(Roles = "Participant")]
         public async Task<IActionResult> GetMyEnrolments()
@@ -81,12 +82,28 @@ namespace RACEDAY_API_PROJECT.Controllers
                     e.participantID,
                     e.categoryID,
                     e.enrolmentDate,
-                    e.status
+                    e.status,
+
+                    category = new
+                    {
+                        e.category.categoryID,
+                        e.category.categoryName,
+                        e.category.distance,
+
+                        @event = new
+                        {
+                            e.category.Event.eventID,
+                            e.category.Event.eventName,
+                            e.category.Event.eventDate,
+                            e.category.Event.location
+                        }
+                    }
                 })
                 .ToListAsync();
 
             return Ok(enrolments);
         }
+
 
         // GET: api/Enrolment/1
         // A Participant can view a specific enrolment they own.
