@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -179,5 +179,3 @@ namespace RACEDAY_API_PROJECT.Controllers
                 message = "You have logged out successfully!"
             });
         }
-    }
-}
