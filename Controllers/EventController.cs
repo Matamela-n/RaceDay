@@ -1,13 +1,18 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+﻿using System.Net.Http.Json;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RaceDay_Web.Models;
 using Microsoft.EntityFrameworkCore; // Enables database query operations.
 using RACEDAY_API_PROJECT.Data;
 using RACEDAY_API_PROJECT.Models;
 using System.Security.Claims;
 
-namespace RACEDAY_API_PROJECT.Controllers
+namespace RaceDay_Web.Controllers;
+
+[Authorize]
+public class EventsController : Controller
 {
+    private readonly IHttpClientFactory _httpClientFactory;
     [Route("api/[controller]")]
     [ApiController]
     public class EventController : ControllerBase
@@ -15,6 +20,10 @@ namespace RACEDAY_API_PROJECT.Controllers
         private readonly RaceDayDbContext _context;
         private readonly IWebHostEnvironment _environment;
 
+    public EventsController(IHttpClientFactory httpClientFactory)
+    {
+        _httpClientFactory = httpClientFactory;
+    }
         public EventController(
             RaceDayDbContext context,
             IWebHostEnvironment environment)
@@ -23,6 +32,9 @@ namespace RACEDAY_API_PROJECT.Controllers
             _environment = environment;
         }
 
+    public async Task<IActionResult> Index()
+    {
+        var client = _httpClientFactory.CreateClient("RaceDayApi");
         // ============================================================
         // CREATE EVENT
         // ============================================================
@@ -34,12 +46,17 @@ namespace RACEDAY_API_PROJECT.Controllers
             // Get the ID of the organiser who is currently logged in.
             var organiserIdClaim = User.FindFirstValue(
                 ClaimTypes.NameIdentifier);
-
+                ClaimTypes.NameIdentifier);
+        try
+        {
+            var events = await client.GetFromJsonAsync<List<EventViewModel>>(
+                "api/Event");
             if (organiserIdClaim == null)
             {
                 return Unauthorized();
             }
-
+                return Unauthorized();
+            return View(events ?? new List<EventViewModel>());
             // Convert the organiser ID from string to integer.
             int organiserID = int.Parse(organiserIdClaim);
 
@@ -57,7 +74,8 @@ namespace RACEDAY_API_PROJECT.Controllers
                 new { id = newEvent.eventID },
                 newEvent
             );
-        }
+                nameof(GetEvent),
+        catch (HttpRequestException ex)
 
         // ============================================================
         // GET A SINGLE EVENT
@@ -65,7 +83,16 @@ namespace RACEDAY_API_PROJECT.Controllers
 
         [HttpGet("{id}")]
         public async Task<ActionResult<Event>> GetEvent(int id)
+
+            ViewBag.ErrorMessage = $"API connection error: {ex.Message}";
+            return View(new List<EventViewModel>());
+        }
+        catch (System.Text.Json.JsonException ex)
         {
+            ViewBag.ErrorMessage = $"API response error: {ex.Message}";
+            return View(new List<EventViewModel>());
+        }
+    }
             // Anyone can view an event.
             var raceEvent = await _context.Events
                 .Include(e => e.Categories)
@@ -78,7 +105,13 @@ namespace RACEDAY_API_PROJECT.Controllers
 
             return raceEvent;
         }
-
+            }
+    public async Task<IActionResult> Details(int id)
+    {
+        if (id <= 0)
+        {
+            return BadRequest();
+        }
         // ============================================================
         // UPDATE EVENT
         // ============================================================
@@ -97,17 +130,37 @@ namespace RACEDAY_API_PROJECT.Controllers
             {
                 return Unauthorized();
             }
-
-            int organiserID = int.Parse(organiserIdClaim);
-
+            if (organiserIdClaim == null)
+            {
+                return Unauthorized();
+        try
+        {
+            var eventItem = await client.GetFromJsonAsync<EventViewModel>(
+                $"api/Event/{id}");
             // Find the event.
             var existingEvent = await _context.Events.FindAsync(id);
-
+        var client = _httpClientFactory.CreateClient("RaceDayApi");
+            if (eventItem == null)
             if (existingEvent == null)
-            {
-                return NotFound();
-            }
+            // Find the event that the Organiser wants to update.
+            var existingEvent = await _context.Events.FindAsync(id);
 
+            // If the event doesn't exist, return 404.
+            return View(eventItem);
+        }
+        catch (HttpRequestException)
+        {
+            return StatusCode(
+                StatusCodes.Status502BadGateway,
+                "Unable to retrieve the event from the RaceDay API.");
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return StatusCode(
+                StatusCodes.Status502BadGateway,
+                "The RaceDay API returned invalid event data.");
+        }
+    }
             // Check that the organiser owns this event.
             if (existingEvent.organiserID != organiserID)
             {
@@ -125,7 +178,19 @@ namespace RACEDAY_API_PROJECT.Controllers
 
             return Ok(existingEvent);
         }
-
+            existingEvent.eventType = updatedEvent.eventType;
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Participant")]
+    public async Task<IActionResult> Enrol(
+        CreateEnrolmentViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return RedirectToAction(
+                "Details",
+                new { id = model.eventID });
+        }
         // ============================================================
         // DELETE EVENT
         // ============================================================
@@ -142,17 +207,33 @@ namespace RACEDAY_API_PROJECT.Controllers
             {
                 return Unauthorized();
             }
-
+        [HttpDelete("{id}")]
+        var apiCookie = User.FindFirst("RaceDayApiCookie")?.Value;
             int organiserID = int.Parse(organiserIdClaim);
 
             // Find the event.
             var raceEvent = await _context.Events.FindAsync(id);
+            var organiserIdClaim = User.FindFirstValue(
+        if (string.IsNullOrWhiteSpace(apiCookie))
+        {
+            TempData["ErrorMessage"] =
+                "Your session has expired. Please log in again.";
 
+            return RedirectToAction("Details",
+                new { id = model.eventID });
+        }
             if (raceEvent == null)
             {
                 return NotFound();
             }
+            }
+        var client = _httpClientFactory.CreateClient("RaceDayApi");
 
+        try
+        {
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                "api/Enrolment");
             // Check that the organiser owns the event.
             if (raceEvent.organiserID != organiserID)
             {
@@ -161,13 +242,18 @@ namespace RACEDAY_API_PROJECT.Controllers
 
             // Remove the event from the database.
             _context.Events.Remove(raceEvent);
-
+            {
+            request.Headers.TryAddWithoutValidation(
+                "Cookie",
+                $"RaceDayAuth={apiCookie}");
             await _context.SaveChangesAsync();
 
-            return Ok(new
+            // Check that the logged-in Organiser owns this event.
+            if (raceEvent.organiserID != organiserID)
             {
-                message = "Event deleted successfully."
-            });
+                return Forbid();
+
+            using var response = await client.SendAsync(request);
         }
 
         // ============================================================
@@ -180,7 +266,22 @@ namespace RACEDAY_API_PROJECT.Controllers
         {
             var organiserIdClaim = User.FindFirstValue(
                 ClaimTypes.NameIdentifier);
-
+            request.Content = JsonContent.Create(new
+            if (response.IsSuccessStatusCode)
+            {
+                TempData["SuccessMessage"] =
+                    "You have successfully enrolled in this event category!";
+            }
+            else
+            {
+                TempData["ErrorMessage"] =
+                    await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (HttpRequestException)
+        {
+            TempData["ErrorMessage"] =
+                "Unable to connect to the RaceDay API.";
             if (organiserIdClaim == null)
             {
                 return Unauthorized();
@@ -214,8 +315,12 @@ namespace RACEDAY_API_PROJECT.Controllers
                 .ToListAsync();
 
             return Ok(enrolments);
-        }
-
+ return Forbid();
+}
+        return RedirectToAction(
+            "Details",
+            new { id = model.eventID });
+    }
         // ============================================================
         // GET ALL EVENTS
         // Used by participants to browse all events.
@@ -257,7 +362,8 @@ namespace RACEDAY_API_PROJECT.Controllers
 
             return Ok(myEvents);
         }
-
+return Ok(enrolments);
+}
         // ============================================================
         // UPLOAD EVENT BANNER
         // ============================================================
@@ -370,4 +476,16 @@ namespace RACEDAY_API_PROJECT.Controllers
         }
     }
 }
+
+        {
+            var events = await _context.Events
+                .Include(e => e.Categories)
+                .ToListAsync();
+
+            return Ok(events);
+        }
+
+    }
+}
+
 

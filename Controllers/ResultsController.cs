@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RACEDAY_API_PROJECT.Data;
@@ -17,6 +18,9 @@ namespace RACEDAY_API_PROJECT.Controllers
         {
             _context = context;
         }
+
+        // GET: api/results/mine
+        // Participants can view their own results.
         [HttpGet("mine")]
         [Authorize(Roles = "Participant")]
         public async Task<IActionResult> GetMyResults()
@@ -31,15 +35,18 @@ namespace RACEDAY_API_PROJECT.Controllers
                 .Where(r => r.Enrolment.participantID == participantId)
                 .Select(r => new
                 {
-                    r.resultID,
-                    r.enrolmentID,
-                    r.finishTime,
-                    r.position
+                    resultID = r.resultID,
+                    enrolmentID = r.enrolmentID,
+                    finishTime = r.finishTime,
+                    position = r.position
                 })
                 .ToListAsync();
 
             return Ok(results);
         }
+
+        // GET: api/events/1/results
+        // Organisers can view results for their own events.
         [HttpGet("/api/events/{id}/results")]
         [Authorize(Roles = "Organiser")]
         public async Task<IActionResult> GetEventResults(int id)
@@ -62,10 +69,18 @@ namespace RACEDAY_API_PROJECT.Controllers
                 .Where(r => r.Enrolment.category.eventID == id)
                 .Select(r => new
                 {
-                    r.resultID,
-                    r.enrolmentID,
-                    r.finishTime,
-                    r.position
+                    resultID = r.resultID,
+                    enrolmentID = r.enrolmentID,
+                    finishTime = r.finishTime,
+                    position = r.position,
+
+                    participantName = _context.Participants
+                        .Where(p => p.participantID ==
+                            r.Enrolment.participantID)
+                        .Select(p => p.firstName + " " + p.lastName)
+                        .FirstOrDefault() ?? "Unknown participant",
+
+                    categoryName = r.Enrolment.category.categoryName
                 })
                 .ToListAsync();
 
@@ -73,19 +88,17 @@ namespace RACEDAY_API_PROJECT.Controllers
         }
 
         // POST: api/results
-        // Only an Organiser can record a result for their own event.
+        // Organisers can record results for their own events.
         [HttpPost]
         [Authorize(Roles = "Organiser")]
         public async Task<IActionResult> CreateResult(Result request)
         {
-            // Get the logged-in Organiser's ID.
             string? userId =
                 User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (!int.TryParse(userId, out int organiserId))
                 return Unauthorized();
 
-            // Find the enrolment that this result belongs to.
             var enrolment = await _context.Enrolments
                 .Include(e => e.category)
                 .FirstOrDefaultAsync(e =>
@@ -94,18 +107,15 @@ namespace RACEDAY_API_PROJECT.Controllers
             if (enrolment == null)
                 return NotFound("Enrolment not found.");
 
-            // Find the event through the enrolment's category.
             var eventItem = await _context.Events.FindAsync(
                 enrolment.category!.eventID);
 
             if (eventItem == null)
                 return NotFound("Event not found.");
 
-            // Make sure the Organiser owns the event.
             if (eventItem.organiserID != organiserId)
                 return Forbid();
 
-            // Create the result using the submitted result details.
             var result = new Result
             {
                 enrolmentID = request.enrolmentID,
@@ -114,6 +124,7 @@ namespace RACEDAY_API_PROJECT.Controllers
             };
 
             _context.Results.Add(result);
+
             await _context.SaveChangesAsync();
 
             return Ok(new
@@ -126,33 +137,28 @@ namespace RACEDAY_API_PROJECT.Controllers
             });
         }
 
-
         // PUT: api/results/1
-        // Only the Organiser who owns the event can update a result.
+        // Organisers can update results for their own events.
         [HttpPut("{id}")]
         [Authorize(Roles = "Organiser")]
         public async Task<IActionResult> UpdateResult(
             int id, Result request)
         {
-            // Get the logged-in Organiser's ID.
             string? userId =
                 User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (!int.TryParse(userId, out int organiserId))
                 return Unauthorized();
 
-            // Make sure the URL ID matches the result ID.
             if (id != request.resultID)
                 return BadRequest("Result ID does not match.");
 
-            // Find the existing result.
             var result = await _context.Results
                 .FirstOrDefaultAsync(r => r.resultID == id);
 
             if (result == null)
                 return NotFound("Result not found.");
 
-            // Find the enrolment linked to the result.
             var enrolment = await _context.Enrolments
                 .Include(e => e.category)
                 .FirstOrDefaultAsync(e =>
@@ -161,18 +167,15 @@ namespace RACEDAY_API_PROJECT.Controllers
             if (enrolment == null)
                 return NotFound("Enrolment not found.");
 
-            // Find the event linked to the category.
             var eventItem = await _context.Events.FindAsync(
                 enrolment.category!.eventID);
 
             if (eventItem == null)
                 return NotFound("Event not found.");
 
-            // Confirm that the Organiser owns this event.
             if (eventItem.organiserID != organiserId)
                 return Forbid();
 
-            // Update the finish time and finishing position.
             result.finishTime = request.finishTime;
             result.position = request.position;
 
@@ -188,10 +191,8 @@ namespace RACEDAY_API_PROJECT.Controllers
             });
         }
 
-
-
         // GET: api/results/1
-        // Any logged-in user can view a specific result.
+        // Any authenticated user can view a specific result.
         [HttpGet("{id}")]
         [Authorize]
         public async Task<IActionResult> GetResult(int id)
@@ -200,26 +201,29 @@ namespace RACEDAY_API_PROJECT.Controllers
                 .Where(r => r.resultID == id)
                 .Select(r => new
                 {
-                    r.resultID,
-                    r.enrolmentID,
-                    r.finishTime,
-                    r.position
+                    resultID = r.resultID,
+                    enrolmentID = r.enrolmentID,
+                    finishTime = r.finishTime,
+                    position = r.position,
+
+                    participantName = _context.Participants
+                        .Where(p => p.participantID ==
+                            r.Enrolment.participantID)
+                        .Select(p => p.firstName + " " + p.lastName)
+                        .FirstOrDefault() ?? "Unknown participant",
+
+                    categoryName = r.Enrolment.category.categoryName
                 })
                 .FirstOrDefaultAsync();
 
             if (result == null)
-            {
                 return NotFound("Result not found.");
-            }
 
             return Ok(result);
         }
 
-
-    
-
         // DELETE: api/results/1
-        // Only the Organiser who owns the event can delete a result.
+        // Only the organiser who owns the event can delete a result.
         [HttpDelete("{id}")]
         [Authorize(Roles = "Organiser")]
         public async Task<IActionResult> DeleteResult(int id)
@@ -255,6 +259,7 @@ namespace RACEDAY_API_PROJECT.Controllers
                 return Forbid();
 
             _context.Results.Remove(result);
+
             await _context.SaveChangesAsync();
 
             return Ok(new
@@ -262,6 +267,5 @@ namespace RACEDAY_API_PROJECT.Controllers
                 message = "Result deleted successfully."
             });
         }
-
     }
 }
