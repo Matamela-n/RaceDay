@@ -1,0 +1,27 @@
+
+name: RaceDay Part 2 CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build API
+        run: dotnet build RACEDAY_API_PROJECT.csproj --configuration Release
+
+      - name: Run unit tests
+        run: dotnet test RACEDAY_API_PROJECT.Tests/RACEDAY_API_PROJECT.Tests.csproj --configuration Release
