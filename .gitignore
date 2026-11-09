@@ -13,3 +13,7 @@ TestResults/
 
 #Local configuration containing secrets
 appsettings.Development.json
+wwwroot/uploads/events/
+wwwroot/uploads/profiles/
+RACEDAY_API_PROJECT/wwwroot/uploads/events/
+RACEDAY_API_PROJECT/wwwroot/uploads/profiles/

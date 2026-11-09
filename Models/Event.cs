@@ -24,8 +24,8 @@ ErrorMessage = "Event type must be Run, Walk, or Cycle."
 )]
         public string eventType { get; set; } = string.Empty;
 public string? description { get; set; }
-
-[Required]
+public string? bannerImagePath { get; set; }
+  [Required]
  public int organiserID { get; set; } //this is a foreign key remember that.
 
 [ForeignKey("organiserID")] //helps to connect the id to the event organiser model.
