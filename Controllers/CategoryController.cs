@@ -9,7 +9,7 @@ namespace RACEDAY_API_PROJECT.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class CategoryController : ControllerBase
+        public class CategoryController : ControllerBase
     {
         private readonly RaceDayDbContext _context;
 
