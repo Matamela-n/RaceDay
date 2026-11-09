@@ -252,3 +252,164 @@ GitHub: https://github.com/Matamela-n/RaceDay
 
 ## 14. Youtube link
 https://youtu.be/r4v1zlMEujg
+# RaceDay Web Application — Part 3 🏃🏾🚶🏽‍♀️🚴🏽‍♀️
+
+## 1. Project Overview
+
+Part 3 of RaceDay extends the existing RaceDay API by introducing an ASP.NET Core MVC web application.
+
+The web application provides a user-friendly interface through which Event Organisers and Participants can interact with the RaceDay system. It communicates with the backend API to retrieve and manage event information, categories, enrolments, profiles and race results.
+
+The purpose of this part is to integrate the API developed in Part 2 with a functional web application.
+
+## 2. Technologies Used
+
+- C#
+- ASP.NET Core MVC
+- ASP.NET Core Web API
+- .NET 8
+- Entity Framework Core
+- SQL Server
+- HTML and CSS
+- Razor Views
+- JavaScript
+- HTTP Client (`IHttpClientFactory`)
+- Cookie-based authentication
+- Role-based authorisation
+- Git and GitHub
+
+## 3. System Architecture
+
+RaceDay uses a two-project architecture:
+
+**RaceDay API**
+- Handles backend operations and business logic.
+- Communicates with the SQL Server database.
+- Provides API endpoints for authentication, events, categories, enrolments and results.
+- Enforces authentication, authorisation and ownership checks.
+
+**RaceDay Web**
+- Provides the user interface through MVC controllers and Razor views.
+- Sends HTTP requests to the RaceDay API.
+- Displays information returned by the API.
+- Provides separate functionality for Organisers and Participants.
+
+The web application communicates with the API using `IHttpClientFactory`.
+
+## 4. Main Features
+
+### Authentication and Registration
+- Register as an Event Organiser or Participant.
+- Log in using registered credentials.
+- Communicate with the API for authentication.
+- Maintain authenticated user sessions.
+- Log out of the application.
+
+### Event Organiser Dashboard
+- Access the Organiser dashboard.
+- Manage race events.
+- Manage event categories.
+- View participant enrolments.
+- Manage race results.
+
+### Participant Dashboard
+- Access the Participant dashboard.
+- Browse available events.
+- View event categories.
+- Manage enrolments.
+- View race results and performance information.
+
+### User Profile Management
+- View and update profile information.
+- Upload a profile image.
+- Display profile information within the web application.
+
+## 5. Project Structure
+
+The repository contains two main application projects:
+
+```text
+RaceDay/
+├── Controllers/
+├── Data/
+├── Migrations/
+├── Models/
+├── RACEDAY_API_PROJECT.csproj
+│
+├── RaceDay_Web/
+│   ├── Controllers/
+│   ├── Models/
+│   ├── Views/
+│   ├── wwwroot/
+│   ├── Program.cs
+│   └── RaceDay_Web.csproj
+│
+├── RACEDAY_API_PROJECT.Tests/
+├── docs/
+├── .github/
+│   └── workflows/
+└── README.md
+```
+
+## 6. Configuration
+
+Before running the web application:
+
+1. Ensure the RaceDay API is configured and can connect to the database.
+2. Open the web application's `appsettings.json`.
+3. Configure the API base URL to match the address where the API is running.
+4. Ensure the API and web application are using the correct environment settings.
+
+Do not commit database passwords, API secrets or other sensitive configuration information.
+
+## 7. Running the Application
+
+Clone the repository:
+
+```bash
+git clone https://github.com/Matamela-n/RaceDay.git
+cd RaceDay
+```
+
+Restore and build the API:
+
+```bash
+dotnet restore RACEDAY_API_PROJECT.csproj
+dotnet build RACEDAY_API_PROJECT.csproj
+```
+
+Run the API:
+
+```bash
+dotnet run --project RACEDAY_API_PROJECT.csproj
+```
+
+In another terminal, restore and run the MVC web application:
+
+```bash
+dotnet restore RaceDay_Web/RaceDay_Web.csproj
+dotnet run --project RaceDay_Web/RaceDay_Web.csproj
+```
+
+Open the web application using the local URL displayed in the terminal.
+
+## 8. Security
+
+RaceDay uses authentication and role-based authorisation to separate Organiser and Participant functionality.
+
+- Organisers access authorised event management functionality.
+- Participants access participant-related functionality.
+- The web application communicates with the API rather than directly managing API database operations.
+- The API remains responsible for validating protected requests and resource ownership.
+
+## 9. Integration
+
+Part 3 integrates the MVC web application with the existing RaceDay API.
+
+The integration allows users to interact with backend functionality through a web interface while keeping the API and database operations separate from the presentation layer.
+
+## 10. Repository
+
+**GitHub:** https://github.com/Matamela-n/RaceDay
+
+**Part 3 Demonstration:** Add the YouTube demonstration link here once available.
