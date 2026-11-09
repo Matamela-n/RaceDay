@@ -5,7 +5,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
-using RaceDay_Web.Models;
+using RACEDAY_API_PROJECT.Models;
 
 namespace RaceDay_Web.Controllers;
 
