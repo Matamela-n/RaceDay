@@ -412,4 +412,4 @@ The integration allows users to interact with backend functionality through a we
 
 **GitHub:** https://github.com/Matamela-n/RaceDay
 
-**Part 3 Demonstration:** Add the YouTube demonstration link here once available.
+**Part 3 Demonstration Youtube link:** https://youtu.be/UpNM00x_6JU
