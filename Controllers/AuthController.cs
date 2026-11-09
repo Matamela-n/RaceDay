@@ -179,3 +179,5 @@ namespace RACEDAY_API_PROJECT.Controllers
                 message = "You have logged out successfully!"
             });
         }
+        }
+        }
