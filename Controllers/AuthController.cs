@@ -1,183 +1,266 @@
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.EntityFrameworkCore;
-using RACEDAY_API_PROJECT.Data;
-using RACEDAY_API_PROJECT.Models;
-using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
+using RaceDay_Web.Models;
 
-namespace RACEDAY_API_PROJECT.Controllers
+namespace RaceDay_Web.Controllers;
+
+public class AuthController : Controller
 {
-    [Route("api/auth")]
-    [ApiController]
-    public class AuthController : ControllerBase
+    private readonly IHttpClientFactory _httpClientFactory;
+
+    public AuthController(IHttpClientFactory httpClientFactory)
     {
-        private readonly RaceDayDbContext _context;
+        _httpClientFactory = httpClientFactory;
+    }
 
-        public AuthController(RaceDayDbContext context)
+    // Display the registration page.
+    [HttpGet]
+    public IActionResult Register()
+    {
+        return View(new RegisterViewModel());
+    }
+
+    // Send registration details to the existing API.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Register(RegisterViewModel model)
+    {
+        if (!ModelState.IsValid)
         {
-            _context = context;
+            return View(model);
         }
 
-        [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterDto request)
+        var client = _httpClientFactory.CreateClient("RaceDayApi");
+
+        try
         {
-            string role = request.role.Trim().ToLower();
-
-            if (role != "organiser" && role != "participant")
-            {
-                return BadRequest("Role must be Organiser or Participant.");
-            }
-
-            bool organiserEmailExists = await _context.EventOrganisers
-                .AnyAsync(o => o.email == request.email);
-
-            bool participantEmailExists = await _context.Participants
-                .AnyAsync(p => p.email == request.email);
-
-            if (organiserEmailExists || participantEmailExists)
-            {
-                return BadRequest("An account with this email already exists.");
-            }
-
-            string hashedPassword =
-                BCrypt.Net.BCrypt.HashPassword(request.password);
-
-            if (role == "organiser")
-            {
-                var organiser = new EventOrganiser
+            var response = await client.PostAsJsonAsync(
+                "api/auth/register",
+                new
                 {
-                    firstName = request.firstName,
-                    lastName = request.lastName,
-                    email = request.email,
-                    password = hashedPassword
-                };
-
-                _context.EventOrganisers.Add(organiser);
-                await _context.SaveChangesAsync();
-
-                return Ok(new
-                {
-                    organiser.organiserID,
-                    organiser.firstName,
-                    organiser.lastName,
-                    organiser.email,
-                    role = "Organiser"
+                    firstName = model.firstName,
+                    lastName = model.lastName,
+                    email = model.email,
+                    password = model.Password,
+                    role = model.Role
                 });
+
+            if (response.IsSuccessStatusCode)
+            {
+                TempData["Success"] =
+                    "Registration successful. You can now log in.";
+
+                return RedirectToAction(nameof(Login));
             }
 
-            var participant = new Participant
-            {
-                firstName = request.firstName,
-                lastName = request.lastName,
-                email = request.email,
-                password = hashedPassword
-            };
+            ModelState.AddModelError(
+                string.Empty,
+                "Registration failed. Check your details or try another email.");
 
-            _context.Participants.Add(participant);
-            await _context.SaveChangesAsync();
+            return View(model);
+        }
+        catch (HttpRequestException)
+        {
+            ModelState.AddModelError(
+                string.Empty,
+                "Cannot connect to RaceDay API. Please try again.");
 
-            return Ok(new
-            {
-                participant.participantID,
-                participant.firstName,
-                participant.lastName,
-                participant.email,
-                role = "Participant"
-            });
+            return View(model);
+        }
+    }
+
+    // Display the login page.
+    [HttpGet]
+    public IActionResult Login()
+    {
+        return View(new LoginViewModel());
+    }
+
+    // Validate credentials through the existing API.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Login(LoginViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
         }
 
-        [HttpPost("login")]
-        public async Task<IActionResult> Login(LoginDto request)
+        var client = _httpClientFactory.CreateClient("RaceDayApi");
+
+        try
         {
-            string role = request.role.Trim().ToLower();
-
-            if (role != "organiser" && role != "participant")
-            {
-                return BadRequest("Role must be Organiser or Participant.");
-            }
-
-            int userID;
-            string email;
-            string storedPassword;
-            string roleName;
-
-            if (role == "organiser")
-            {
-                var organiser = await _context.EventOrganisers
-                    .FirstOrDefaultAsync(o => o.email == request.email);
-
-                if (organiser == null)
+            var response = await client.PostAsJsonAsync(
+                "api/auth/login",
+                new
                 {
-                    return Unauthorized("Invalid email or password.");
-                }
+                    email = model.Email,
+                    password = model.Password,
+                    role = model.Role
+                });
 
-                userID = organiser.organiserID;
-                email = organiser.email;
-                storedPassword = organiser.password;
-                roleName = "Organiser";
-            }
-            else
+            if (!response.IsSuccessStatusCode)
             {
-                var participant = await _context.Participants
-                    .FirstOrDefaultAsync(p => p.email == request.email);
+                ModelState.AddModelError(
+                    string.Empty,
+                    "Login failed. Check your email, password and account type.");
 
-                if (participant == null)
+                return View(model);
+            }
+
+            var loginResult =
+                await response.Content.ReadFromJsonAsync<LoginResponseModel>();
+
+            // Validate the response returned by the API.
+            if (loginResult == null ||
+                loginResult.UserID <= 0 ||
+                string.IsNullOrWhiteSpace(loginResult.Email) ||
+                string.IsNullOrWhiteSpace(loginResult.Role) ||
+                !string.Equals(
+                    loginResult.Email,
+                    model.Email,
+                    StringComparison.OrdinalIgnoreCase) ||
+                !IsAllowedRole(loginResult.Role) ||
+                !string.Equals(
+                    loginResult.Role,
+                    model.Role,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError(
+                    string.Empty,
+                    "The API returned an invalid login response.");
+
+                return View(model);
+            }
+
+            // Create a verified MVC identity from the API response.
+
+            // Capture the API authentication cookie.
+            string? apiCookieValue = null;
+
+            if (response.Headers.TryGetValues(
+                "Set-Cookie", out var setCookieHeaders))
+            {
+                var authCookie = setCookieHeaders.FirstOrDefault(header =>
+                    header.StartsWith(
+                        "RaceDayAuth=",
+                        StringComparison.OrdinalIgnoreCase));
+
+                if (authCookie != null)
                 {
-                    return Unauthorized("Invalid email or password.");
+                    var cookiePair = authCookie.Split(';', 2)[0];
+                    apiCookieValue =
+                        cookiePair["RaceDayAuth=".Length..];
                 }
-
-                userID = participant.participantID;
-                email = participant.email;
-                storedPassword = participant.password;
-                roleName = "Participant";
             }
 
-            bool passwordCorrect =
-                BCrypt.Net.BCrypt.Verify(request.password, storedPassword);
-
-            if (!passwordCorrect)
+            if (string.IsNullOrWhiteSpace(apiCookieValue))
             {
-                return Unauthorized("Invalid email or password.");
+                ModelState.AddModelError(
+                    string.Empty,
+                    "Login succeeded, but the API authentication cookie was not received.");
+
+                return View(model);
             }
 
+            // Create a verified MVC identity from the API response.
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier, userID.ToString()),
-                new Claim(ClaimTypes.Email, email),
-                new Claim(ClaimTypes.Role, roleName)
+                new(
+                    ClaimTypes.NameIdentifier,
+                    loginResult.UserID.ToString()),
+
+                new(
+                    ClaimTypes.Name,
+                    loginResult.Email),
+
+                new(
+                    ClaimTypes.Email,
+                    loginResult.Email),
+
+                new(
+                    ClaimTypes.Role,
+                    loginResult.Role),
+
+                // Stored inside the protected MVC authentication ticket.
+                new(
+                    "RaceDayApiCookie",
+                    apiCookieValue)
             };
 
-            var claimsIdentity = new ClaimsIdentity(
-                claims,
-                CookieAuthenticationDefaults.AuthenticationScheme
-            );
-
-            await HttpContext.SignInAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme,
-                new ClaimsPrincipal(claimsIdentity)
-            );
-
-            return Ok(new
             {
-                message = "Login successful.",
-                userID = userID,
-                email = email,
-                role = roleName
-            });
-        }
 
-        [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
+
+                var identity = new ClaimsIdentity(
+                    claims,
+                    CookieAuthenticationDefaults.AuthenticationScheme);
+
+                var principal = new ClaimsPrincipal(identity);
+
+                // Issue the protected authentication cookie.
+                await HttpContext.SignInAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    principal);
+
+                // Redirect according to the API-confirmed role.
+                if (string.Equals(
+                    loginResult.Role,
+                    "Organiser",
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    return RedirectToAction(
+                        "Index",
+                        "OrganiserDashboard");
+                }
+
+                return RedirectToAction(
+                    "Index",
+                    "ParticipantDashboard");
+            }
+        }
+        catch (HttpRequestException)
         {
-            await HttpContext.SignOutAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme);
+            ModelState.AddModelError(
+                string.Empty,
+                "Cannot connect to RaceDay API. Please try again.");
 
-            return Ok(new
-            {
-                message = "You have logged out successfully!"
-            });
+            return View(model);
         }
+        catch (JsonException)
+        {
+            ModelState.AddModelError(
+                string.Empty,
+                "The API returned an unreadable login response.");
+
+            return View(model);
         }
-        }
+    }
+
+    // Sign out of the MVC application.
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Logout()
+    {
+        await HttpContext.SignOutAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme);
+
+        return RedirectToAction(nameof(Login));
+    }
+
+    private static bool IsAllowedRole(string role)
+    {
+        return string.Equals(
+                   role,
+                   "Participant",
+                   StringComparison.OrdinalIgnoreCase)
+               ||
+               string.Equals(
+                   role,
+                   "Organiser",
+                   StringComparison.OrdinalIgnoreCase);
+    }
+}

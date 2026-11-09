@@ -1,55 +1,53 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.EntityFrameworkCore;// this allows us to have access to the framework core like the sql server.
-using RACEDAY_API_PROJECT.Data;
-
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+builder.Services.AddControllersWithViews();
 
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
+builder.Services.AddHttpClient("RaceDayApi", client =>
+{
+    var apiBaseUrl = builder.Configuration["ApiSettings:BaseUrl"];
+
+    if (string.IsNullOrWhiteSpace(apiBaseUrl))
     {
-        options.JsonSerializerOptions.ReferenceHandler =
-            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-    });// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+        throw new InvalidOperationException(
+            "ApiSettings:BaseUrl is missing from appsettings.json.");
+    }
 
-builder.Services.AddDbContext<RaceDayDbContext>(options =>
-options.UseSqlServer( builder.Configuration.GetConnectionString("DefaultConnection")
-    )
-);
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-.AddCookie(options =>
-{
-options.Cookie.Name = "RaceDayAuth";
-options.Events.OnRedirectToLogin = context =>
-{
-context.Response.StatusCode = StatusCodes.Status401Unauthorized;
- return Task.CompletedTask;
-};
-options.Events.OnRedirectToAccessDenied = context =>
-{
- context.Response.StatusCode = StatusCodes.Status403Forbidden;
- return Task.CompletedTask;
-    };
+    client.BaseAddress = new Uri(apiBaseUrl);
 });
 
-var app = builder.Build();
-app.UseStaticFiles();
+builder.Services.AddAuthentication(
+    CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Auth/Login";
+        options.AccessDeniedPath = "/Home/AccessDenied";
+        options.Cookie.Name = "RaceDay.Web.Auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.SlidingExpiration = true;
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+    });
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseRouting();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();

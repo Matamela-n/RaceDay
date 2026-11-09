@@ -1,0 +1,206 @@
+﻿@model IEnumerable<RaceDay_Web.Models.EnrolmentViewModel>
+
+@{
+    ViewData["Title"] = "Manage Enrolments";
+}
+
+<div class="container mt-4 mb-5">
+
+    <!-- Page heading -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold">Manage Enrolments</h2>
+            <p class="text-muted">
+                View and manage participants registered for your events.
+            </p>
+        </div>
+
+        <a asp-controller="OrganiserDashboard"
+           asp-action="Index"
+           class="btn btn-outline-secondary">
+            Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Success message -->
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            @TempData["Success"]
+            <button type="button" class="btn-close"
+                    data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Error message -->
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @TempData["Error"]
+            <button type="button" class="btn-close"
+                    data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (Model == null || !Model.Any())
+    {
+        <div class="card shadow-sm border-0">
+            <div class="card-body text-center py-5">
+                <h5>No Enrolments Found</h5>
+                <p class="text-muted mb-0">
+                    Participants who enrol in your events will appear here.
+                </p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-dark text-white py-3">
+                <h5 class="mb-0">Participant Enrolments</h5>
+            </div>
+
+            <div class="card-body">
+                <div class="table-responsive">
+
+                    <table class="table table-hover align-middle">
+
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Participant</th>
+                                <th>Email</th>
+                                <th>Event</th>
+                                <th>Category</th>
+                                <th>Distance</th>
+                                <th>Enrolment Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var enrolment in Model)
+                            {
+                                <tr>
+                                    <!-- Participant -->
+                                    <td>
+                                        <strong>
+                                            @(enrolment.Participant?.FirstName ?? "")
+                                            @(enrolment.Participant?.LastName ?? "")
+                                        </strong>
+                                    </td>
+
+                                    <!-- Email -->
+                                    <td>
+                                        @(enrolment.Participant?.Email ?? "N/A")
+                                    </td>
+
+                                    <!-- Event -->
+                                    <td>
+                                        @(enrolment.Category?.Event?.EventName ?? "N/A")
+                                    </td>
+
+                                    <!-- Category -->
+                                    <td>
+                                        @(enrolment.Category?.CategoryName ?? "N/A")
+                                    </td>
+
+                                    <!-- Distance -->
+                                    <td>
+                                        @(enrolment.Category?.Distance.ToString() ?? "N/A") km
+                                    </td>
+
+                                    <!-- Enrolment date -->
+                                    <td>
+                                        @(enrolment.EnrolmentDate?.ToString("dd MMM yyyy") ?? "N/A")
+                                    </td>
+
+                                    <!-- Status -->
+                                    <td>
+                                        @{
+                                            var status = enrolment.Status ?? "Pending";
+
+                                            var badgeClass = status.ToLower() switch
+                                            {
+                                                "confirmed" => "bg-success",
+                                                "rejected" => "bg-danger",
+                                                _ => "bg-warning text-dark"
+                                            };
+                                        }
+
+                                        <span class="badge @badgeClass">
+                                            @status
+                                        </span>
+                                    </td>
+
+                                    <!-- Actions -->
+                                    <td>
+                                        @if (string.Equals(
+                                                                        enrolment.Status,
+                                                                        "Pending",
+                                                                        StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <!-- Confirm button -->
+                                            <form asp-action="UpdateEnrolmentStatus"
+                                                  asp-controller="OrganiserDashboard"
+                                                  method="post"
+                                                  class="d-inline">
+
+                                                @Html.AntiForgeryToken()
+
+                                                <input type="hidden"
+                                                       name="id"
+                                                       value="@enrolment.EnrolmentID" />
+
+                                                <input type="hidden"
+                                                       name="status"
+                                                       value="Confirmed" />
+
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-success mb-1">
+                                                    Confirm
+                                                </button>
+                                            </form>
+
+                                            <!-- Reject button -->
+                                            <form asp-action="UpdateEnrolmentStatus"
+                                                  asp-controller="OrganiserDashboard"
+                                                  method="post"
+                                                  class="d-inline">
+
+                                                @Html.AntiForgeryToken()
+
+                                                <input type="hidden"
+                                                       name="id"
+                                                       value="@enrolment.EnrolmentID" />
+
+                                                <input type="hidden"
+                                                       name="status"
+                                                       value="Rejected" />
+
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-danger mb-1">
+                                                    Reject
+                                                </button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">
+                                                No actions available
+                                            </span>
+                                        }
+                                    </td>
+
+                                </tr>
+                            }
+                        </tbody>
+
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+</div>
+

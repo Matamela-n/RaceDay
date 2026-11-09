@@ -1,131 +1,273 @@
-using Microsoft.AspNetCore.Mvc;
+﻿
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore;
-using RACEDAY_API_PROJECT.Data;
-using RACEDAY_API_PROJECT.Models;
-using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
+using RaceDay_Web.Models;
 
-namespace RACEDAY_API_PROJECT.Controllers
+namespace RaceDay_Web.Controllers;
+
+[Authorize(Roles = "Organiser")]
+public class CategoryController : Controller
 {
-    [Route("api/[controller]")]
-    [ApiController]
-        public class CategoryController : ControllerBase
+    private readonly IHttpClientFactory _httpClientFactory;
+
+    public CategoryController(IHttpClientFactory httpClientFactory)
     {
-        private readonly RaceDayDbContext _context;
+        _httpClientFactory = httpClientFactory;
+    }
 
-        public CategoryController(RaceDayDbContext context)
+    private HttpRequestMessage CreateApiRequest(
+        HttpMethod method, string url)
+    {
+        var request = new HttpRequestMessage(method, url);
+        var apiCookie = User.FindFirst("RaceDayApiCookie")?.Value;
+
+        if (!string.IsNullOrWhiteSpace(apiCookie))
         {
-            _context = context;
+            request.Headers.TryAddWithoutValidation(
+                "Cookie", $"RaceDayAuth={apiCookie}");
         }
 
-        // GET: api/Category
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Category>>> GetCategories()
+        return request;
+    }
+
+    public async Task<IActionResult> Index()
+    {
+        var client = _httpClientFactory.CreateClient("RaceDayApi");
+
+        try
         {
-            return await _context.Categories.ToListAsync();
+            using var request = CreateApiRequest(
+                HttpMethod.Get, "api/Category");
+
+            using var response = await client.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ViewBag.ErrorMessage =
+                    $"Unable to retrieve categories. Status: {(int)response.StatusCode} ({response.StatusCode}).";
+
+                return View(new List<CategoryViewModel>());
+            }
+
+            var categories = await response.Content
+                .ReadFromJsonAsync<List<CategoryViewModel>>();
+
+            return View(categories ?? new List<CategoryViewModel>());
+        }
+        catch (HttpRequestException)
+        {
+            ViewBag.ErrorMessage =
+                "Unable to connect to the RaceDay API.";
+
+            return View(new List<CategoryViewModel>());
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Create()
+    {
+        await LoadEvents();
+        return View(new CategoryViewModel());
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(CategoryViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            await LoadEvents();
+            return View(model);
         }
 
-        // GET: api/Category/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Category>> GetCategory(int id)
+        var client = _httpClientFactory.CreateClient("RaceDayApi");
+
+        try
         {
-            var category = await _context.Categories.FindAsync(id);
+            using var request = CreateApiRequest(
+                HttpMethod.Post, "api/Category");
+
+            request.Content = JsonContent.Create(new
+            {
+                categoryName = model.CategoryName,
+                distance = model.Distance,
+                eventID = model.EventID
+            });
+
+            using var response = await client.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                TempData["SuccessMessage"] =
+                    "Category created successfully!";
+
+                return RedirectToAction(nameof(Index));
+            }
+
+            var error = await response.Content.ReadAsStringAsync();
+
+            ModelState.AddModelError("",
+                $"Unable to create category. Status: {(int)response.StatusCode} ({response.StatusCode}). Details: {error}");
+        }
+        catch (HttpRequestException)
+        {
+            ModelState.AddModelError("",
+                "Unable to connect to the RaceDay API.");
+        }
+
+        await LoadEvents();
+        return View(model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Edit(int id)
+    {
+        var client = _httpClientFactory.CreateClient("RaceDayApi");
+
+        try
+        {
+            using var request = CreateApiRequest(
+                HttpMethod.Get, $"api/Category/{id}");
+
+            using var response = await client.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+                return NotFound();
+
+            var category = await response.Content
+                .ReadFromJsonAsync<CategoryViewModel>();
 
             if (category == null)
                 return NotFound();
 
-            return Ok(category);
+            await LoadEvents();
+            return View(category);
+        }
+        catch (HttpRequestException)
+        {
+            return StatusCode(
+                502, "Unable to connect to the RaceDay API.");
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(
+        int id, CategoryViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            await LoadEvents();
+            return View(model);
         }
 
-        // POST: api/Category
-        [HttpPost]
-        [Authorize(Roles = "Organiser")]
-        public async Task<ActionResult<Category>> CreateCategory(Category category)
+        var client = _httpClientFactory.CreateClient("RaceDayApi");
+
+        try
         {
-            string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            using var request = CreateApiRequest(
+                HttpMethod.Put, $"api/Category/{id}");
 
-            if (!int.TryParse(userId, out int organiserId))
-                return Unauthorized();
+            request.Content = JsonContent.Create(new
+            {
+                categoryID = id,
+                categoryName = model.CategoryName,
+                distance = model.Distance,
+                eventID = model.EventID
+            });
 
-            var eventItem = await _context.Events.FindAsync(category.eventID);
+            using var response = await client.SendAsync(request);
 
-            if (eventItem == null)
-                return NotFound("Event not found.");
+            if (response.IsSuccessStatusCode)
+            {
+                TempData["SuccessMessage"] =
+                    "Category updated successfully!";
 
-            if (eventItem.organiserID != organiserId)
-                return Forbid();
+                return RedirectToAction(nameof(Index));
+            }
 
-            _context.Categories.Add(category);
-            await _context.SaveChangesAsync();
+            var error = await response.Content.ReadAsStringAsync();
 
-            return CreatedAtAction(
-                nameof(GetCategory),
-                new { id = category.categoryID },
-                category);
+            ModelState.AddModelError("",
+                $"Unable to update category. Status: {(int)response.StatusCode} ({response.StatusCode}). Details: {error}");
+        }
+        catch (HttpRequestException)
+        {
+            ModelState.AddModelError("",
+                "Unable to connect to the RaceDay API.");
         }
 
-        // PUT: api/Category/5
-        [HttpPut("{id}")]
-        [Authorize(Roles = "Organiser")]
-        public async Task<IActionResult> UpdateCategory(int id, Category request)
+        await LoadEvents();
+        return View(model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var client = _httpClientFactory.CreateClient("RaceDayApi");
+
+        try
         {
-            if (id != request.categoryID)
-                return BadRequest("Category ID does not match.");
+            using var request = CreateApiRequest(
+                HttpMethod.Delete, $"api/Category/{id}");
 
-            string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            using var response = await client.SendAsync(request);
 
-            if (!int.TryParse(userId, out int organiserId))
-                return Unauthorized();
+            if (response.IsSuccessStatusCode)
+            {
+                TempData["SuccessMessage"] =
+                    "Category deleted successfully!";
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
 
-            var category = await _context.Categories.FindAsync(id);
-
-            if (category == null)
-                return NotFound();
-
-            var eventItem = await _context.Events.FindAsync(category.eventID);
-
-            if (eventItem == null)
-                return NotFound("Event not found.");
-
-            if (eventItem.organiserID != organiserId)
-                return Forbid();
-
-            category.categoryName = request.categoryName;
-            category.distance = request.distance;
-
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+                TempData["ErrorMessage"] =
+                    $"Unable to delete category. Status: {(int)response.StatusCode} ({response.StatusCode}). Details: {error}";
+            }
+        }
+        catch (HttpRequestException)
+        {
+            TempData["ErrorMessage"] =
+                "Unable to connect to the RaceDay API.";
         }
 
-        // DELETE: api/Category/5
-        [HttpDelete("{id}")]
-        [Authorize(Roles = "Organiser")]
-        public async Task<IActionResult> DeleteCategory(int id)
+        return RedirectToAction(nameof(Index));
+    }
+
+    private async Task LoadEvents()
+    {
+        var client = _httpClientFactory.CreateClient("RaceDayApi");
+
+        try
         {
-            string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            using var request = CreateApiRequest(
+                HttpMethod.Get, "api/Event");
 
-            if (!int.TryParse(userId, out int organiserId))
-                return Unauthorized();
+            using var response = await client.SendAsync(request);
 
-            var category = await _context.Categories.FindAsync(id);
+            if (response.IsSuccessStatusCode)
+            {
+                var events = await response.Content
+                    .ReadFromJsonAsync<List<EventViewModel>>();
 
-            if (category == null)
-                return NotFound();
+                var organiserId = User.FindFirst(
+                    System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-            var eventItem = await _context.Events.FindAsync(category.eventID);
-
-            if (eventItem == null)
-                return NotFound("Event not found.");
-
-            if (eventItem.organiserID != organiserId)
-                return Forbid();
-
-            _context.Categories.Remove(category);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+                ViewBag.Events = events?
+                    .Where(e => e.OrganiserID.ToString() == organiserId)
+                    .ToList() ?? new List<EventViewModel>();
+            }
+            else
+            {
+                ViewBag.Events = new List<EventViewModel>();
+            }
+        }
+        catch (HttpRequestException)
+        {
+            ViewBag.Events = new List<EventViewModel>();
         }
     }
 }
-
