@@ -2,7 +2,7 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using RaceDay_Web.Models;
+using RACEDAY_API_PROJECT.Models;
 
 namespace RaceDay_Web.Controllers;
 
