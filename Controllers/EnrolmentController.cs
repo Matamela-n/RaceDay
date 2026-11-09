@@ -1,5 +1,4 @@
-﻿
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using RACEDAY_API_PROJECT.Data;
@@ -92,10 +91,10 @@ namespace RACEDAY_API_PROJECT.Controllers
 
                         @event = new
                         {
-                            e.category.Event.eventID,
-                            e.category.Event.eventName,
-                            e.category.Event.eventDate,
-                            e.category.Event.location
+ e.category.Event.eventID,
+e.category.Event.eventName,
+e.category.Event.eventDate,
+  e.category.Event.location
                         }
                     }
                 })
@@ -224,6 +223,102 @@ namespace RACEDAY_API_PROJECT.Controllers
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+    
+// GET: api/Enrolment/organiser
+// An Organiser can view enrolments for their own events.
+[HttpGet("organiser")]
+        [Authorize(Roles = "Organiser")]
+        public async Task<IActionResult> GetOrganiserEnrolments()
+        {
+            string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (!int.TryParse(userId, out int organiserId))
+                return Unauthorized();
+
+            var enrolments = await _context.Enrolments
+                .Where(e => e.category != null &&
+                            e.category.Event != null &&
+                            e.category.Event.organiserID == organiserId)
+                .Select(e => new
+                {
+                    e.enrolmentID,
+                    e.participantID,
+                    e.categoryID,
+                    e.enrolmentDate,
+                    e.status,
+                    participant = new
+                    {
+                        e.participant!.participantID,
+                        e.participant.firstName,
+                        e.participant.lastName,
+                        e.participant.email
+                    },
+                    category = new
+                    {
+                        e.category!.categoryID,
+                        e.category.categoryName,
+                        e.category.distance,
+                        @event = new
+                        {
+                            e.category.Event!.eventID,
+                            e.category.Event.eventName,
+                            e.category.Event.eventDate,
+                            e.category.Event.location
+                        }
+                    }
+                })
+                .ToListAsync();
+
+            return Ok(enrolments);
+        }
+
+        // PUT: api/Enrolment/organiser/1/status
+        // An Organiser can confirm or reject enrolments for their own events.
+        [HttpPut("organiser/{id}/status")]
+        [Authorize(Roles = "Organiser")]
+        public async Task<IActionResult> UpdateOrganiserEnrolmentStatus(
+            int id,
+            UpdateStatusDto request)
+        {
+            string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (!int.TryParse(userId, out int organiserId))
+                return Unauthorized();
+
+            if (string.IsNullOrWhiteSpace(request.Status))
+                return BadRequest("Status is required.");
+
+            var newStatus = request.Status.Trim();
+
+            if (newStatus != "Confirmed" && newStatus != "Rejected")
+                return BadRequest("Status must be Confirmed or Rejected.");
+
+            var enrolment = await _context.Enrolments
+                .Include(e => e.category)
+                .ThenInclude(c => c!.Event)
+                .FirstOrDefaultAsync(e => e.enrolmentID == id);
+
+            if (enrolment == null)
+                return NotFound("Enrolment not found.");
+
+            if (enrolment.category?.Event == null ||
+                enrolment.category.Event.organiserID != organiserId)
+                return Forbid();
+
+            if (enrolment.status != "Pending")
+                return BadRequest("Only pending enrolments can be updated.");
+
+            enrolment.status = newStatus;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Enrolment status updated successfully.",
+                enrolment.enrolmentID,
+                enrolment.status
+            });
         }
     }
 }
