@@ -8,9 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="RACEDAY_API_PROJECT.Tests/**/*.cs" />
-    <Compile Remove="RaceDay_Web/**/*.cs" />
-  </ItemGroup>
+  <Compile Remove="RACEDAY_API_PROJECT.Tests/**/*.cs" />
+  <Compile Remove="RaceDay_Web/**/*.cs" />
+  <Content Remove="RaceDay_Web/**/*.cshtml" />
+  <RazorGenerate Remove="RaceDay_Web/**/*.cshtml" />
+</ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
