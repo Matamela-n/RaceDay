@@ -1,0 +1,210 @@
+﻿@{
+    ViewData["Title"] = "Participant Dashboard";
+}
+
+<style>
+    .participant-page {
+        color: #14233f;
+    }
+
+    .participant-hero {
+        background: linear-gradient(120deg, #14233f, #203b61);
+        color: white;
+        border-radius: 18px;
+        padding: 45px 35px;
+        margin-bottom: 35px;
+    }
+
+        .participant-hero h1 {
+            font-weight: 800;
+            font-size: 2.2rem;
+        }
+
+    .lime-text {
+        color: #b4f542;
+    }
+
+    .participant-card {
+        background: white;
+        border: 1px solid #e7ebf2;
+        border-radius: 16px;
+        padding: 28px;
+        height: 100%;
+        box-shadow: 0 5px 18px rgba(20, 35, 63, .06);
+        transition: transform .2s, box-shadow .2s;
+    }
+
+        .participant-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 9px 22px rgba(20, 35, 63, .12);
+        }
+
+    .participant-icon {
+        width: 58px;
+        height: 58px;
+        background: #eff9dc;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        margin-bottom: 20px;
+    }
+
+    .participant-card h4 {
+        font-weight: 750;
+        margin-bottom: 12px;
+    }
+
+    .participant-card p {
+        color: #6c7890;
+        min-height: 48px;
+    }
+
+    .participant-btn {
+        background: #b4f542;
+        color: #14233f;
+        border: none;
+        font-weight: 700;
+        padding: 10px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+        .participant-btn:hover {
+            background: #a2e832;
+            color: #14233f;
+        }
+
+    .participant-section-title {
+        font-weight: 800;
+        color: #14233f;
+    }
+</style>
+
+<div class="container py-5 participant-page">
+
+    <!-- Welcome Banner -->
+    <section class="participant-hero">
+        <div class="row align-items-center">
+
+            <div class="col-md-8">
+                <p class="lime-text fw-bold text-uppercase mb-2"
+                   style="letter-spacing: 2px;">
+                    YOUR RACEDAY EXPERIENCE
+                </p>
+
+                <h1>Welcome to RaceDay!</h1>
+
+                <p class="mb-4">
+                    Discover exciting events, manage your enrolments
+                    and keep track of your race performance.
+                </p>
+
+                <a asp-controller="Events"
+                   asp-action="Index"
+                   class="participant-btn">
+                    Explore Events →
+                </a>
+            </div>
+
+            <div class="col-md-4 text-center mt-4 mt-md-0">
+                <div style="font-size: 90px;">🏃</div>
+                <h5 class="lime-text">Your race. Your journey.</h5>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Dashboard Heading -->
+    <div class="mb-4">
+        <h2 class="participant-section-title">Your Dashboard</h2>
+        <p class="text-muted">
+            Everything you need for your next race, in one place.
+        </p>
+    </div>
+
+    <!-- Dashboard Cards -->
+    <div class="row g-4">
+
+        <!-- Browse Events -->
+        <div class="col-md-4">
+            <div class="participant-card">
+
+                <div class="participant-icon">🔎</div>
+
+                <h4>Browse Events</h4>
+
+                <p>
+                    Discover upcoming running, walking and cycling
+                    events and find your next challenge.
+                </p>
+
+                <a asp-controller="Events"
+                   asp-action="Index"
+                   class="participant-btn">
+                    Explore Events →
+                </a>
+
+            </div>
+        </div>
+
+        <!-- My Enrolments -->
+        <div class="col-md-4">
+            <div class="participant-card">
+
+                <div class="participant-icon">🎟️</div>
+
+                <h4>My Enrolments</h4>
+
+                <p>
+                    View your registered events, check enrolment
+                    statuses and manage your registrations.
+                </p>
+
+                <a asp-controller="Enrolments"
+                   asp-action="Index"
+                   class="participant-btn">
+                    My Enrolments →
+                </a>
+
+            </div>
+        </div>
+
+        <!-- My Results -->
+        <div class="col-md-4">
+            <div class="participant-card">
+
+                <div class="participant-icon">🏆</div>
+
+                <h4>My Results</h4>
+
+                <p>
+                    Track your finishing positions, race times
+                    and performance in completed events.
+                </p>
+
+                <a asp-controller="ParticipantDashboard"
+                   asp-action="Results"
+                   class="participant-btn">
+                    View Results →
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bottom Message -->
+    <div class="text-center mt-5 py-4">
+        <h4 class="participant-section-title">
+            Ready for your next challenge?
+        </h4>
+
+        <p class="text-muted mb-0">
+            Find an event, register and make every race count.
+        </p>
+    </div>
+
+</div>

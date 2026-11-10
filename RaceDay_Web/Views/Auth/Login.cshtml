@@ -1,0 +1,81 @@
+﻿@model RaceDay_Web.Models.LoginViewModel
+
+@{
+    ViewData["Title"] = "Log In";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-5">
+            <div class="card shadow border-0">
+                <div class="card-body p-4 p-md-5">
+                    <h1 class="text-center mb-2">Welcome Back</h1>
+                    <p class="text-center text-muted mb-4">
+                        Log in to your RaceDay account.
+                    </p>
+
+                    @if (TempData["Success"] != null)
+                    {
+                        <div class="alert alert-success">
+                            @TempData["Success"]
+                        </div>
+                    }
+
+                    <form asp-controller="Auth"
+                          asp-action="Login"
+                          method="post">
+
+                        <div asp-validation-summary="ModelOnly"
+                             class="text-danger mb-3"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Email"
+                                   class="form-label"></label>
+                            <input asp-for="Email"
+                                   class="form-control"
+                                   autocomplete="email" />
+                            <span asp-validation-for="Email"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Password"
+                                   class="form-label"></label>
+                            <input asp-for="Password"
+                                   class="form-control"
+                                   autocomplete="current-password" />
+                            <span asp-validation-for="Password"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="Role"
+                                   class="form-label">Account type</label>
+                            <select asp-for="Role" class="form-select">
+                                <option value="Participant">Participant</option>
+                                <option value="Organiser">Organiser</option>
+                            </select>
+                            <span asp-validation-for="Role"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <button type="submit"
+                                class="btn btn-primary w-100">
+                            Log In
+                        </button>
+                    </form>
+
+                    <p class="text-center mt-4 mb-0">
+                        New to RaceDay?
+                        <a asp-controller="Auth"
+                           asp-action="Register">Create an account</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

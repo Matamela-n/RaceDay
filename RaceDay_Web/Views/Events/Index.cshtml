@@ -1,0 +1,134 @@
+﻿@model List<RaceDay_Web.Models.EventViewModel>
+
+@{
+    ViewData["Title"] = "Browse Events";
+}
+
+<div class="container py-5 browse-events-page">
+
+    <!-- Page Header -->
+    <div class="browse-header mb-4">
+        <span class="browse-label">DISCOVER YOUR NEXT CHALLENGE</span>
+        <h1>Find Your Next Race.</h1>
+        <p>Explore exciting running, walking and cycling events with RaceDay.</p>
+    </div>
+
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="alert alert-danger">
+            @ViewBag.ErrorMessage
+        </div>
+    }
+
+    @if (Model == null || !Model.Any())
+    {
+        <div class="empty-events">
+            <div class="empty-events-icon">🏁</div>
+            <h4>No events available</h4>
+            <p>There are currently no events to explore. Please check again later.</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+
+            @foreach (var item in Model)
+            {
+                <div class="col-md-6 col-lg-4">
+
+                    <div class="browse-event-card h-100">
+
+                        <!-- Event Banner -->
+                        <div class="browse-event-banner">
+
+                            @if (!string.IsNullOrWhiteSpace(item.BannerImagePath))
+                            {
+                                <img src="@($"https://localhost:7000{item.BannerImagePath}")"
+                                     alt="@item.EventName banner"
+                                     class="event-banner-image" />
+                            }
+                            else
+                            {
+                                <div class="event-banner-placeholder">
+                                    <span>🏁</span>
+                                    <p>RACEDAY</p>
+                                </div>
+                            }
+
+                            <span class="browse-event-type">
+                                @item.EventType
+                            </span>
+
+                        </div>
+
+                        <!-- Event Information -->
+                        <div class="browse-event-content">
+
+                            <h4>@item.EventName</h4>
+
+                            <div class="browse-event-detail">
+                                <span class="detail-icon">📅</span>
+                                <div>
+                                    <strong>Date and Time</strong>
+                                    <p>@item.EventDate.ToString("dd MMMM yyyy, HH:mm")</p>
+                                </div>
+                            </div>
+
+                            <div class="browse-event-detail">
+                                <span class="detail-icon">📍</span>
+                                <div>
+                                    <strong>Location</strong>
+                                    <p>@item.Location</p>
+                                </div>
+                            </div>
+
+                            <p class="browse-event-description">
+                                @item.Description
+                            </p>
+
+                            <!-- Event Categories -->
+                            <div class="browse-categories">
+
+                                <strong>Available Categories</strong>
+
+                                @if (item.Categories != null && item.Categories.Count > 0)
+                                {
+                                    <div class="category-tags">
+                                        @foreach (var category in item.Categories)
+                                        {
+                                            <span class="category-tag">
+                                                @category.CategoryName · @category.Distance km
+                                            </span>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <p class="no-categories">
+                                        No categories listed yet.
+                                    </p>
+                                }
+
+                            </div>
+
+                            <!-- View Details -->
+                            <div class="browse-event-action">
+                                <a asp-controller="Events"
+                                   asp-action="Details"
+                                   asp-route-id="@item.EventID"
+                                   class="btn btn-event-details">
+                                    View Event Details →
+                                </a>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            }
+
+        </div>
+    }
+
+</div>
+

@@ -1,0 +1,94 @@
+﻿@model RaceDay_Web.Models.RegisterViewModel
+
+@{
+    ViewData["Title"] = "Create Account";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-6">
+            <div class="card shadow border-0">
+                <div class="card-body p-4 p-md-5">
+                    <h1 class="text-center mb-2">Join RaceDay</h1>
+                    <p class="text-center text-muted mb-4">
+                        Create your account to get started.
+                    </p>
+
+                    <form asp-controller="Auth"
+                          asp-action="Register"
+                          method="post">
+
+                        <div asp-validation-summary="ModelOnly"
+                             class="text-danger mb-3"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="firstName"
+                                   class="form-label"></label>
+                            <input asp-for="firstName"
+                                   class="form-control"
+                                   autocomplete="given-name" />
+                            <span asp-validation-for="firstName"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="lastName"
+                                   class="form-label"></label>
+                            <input asp-for="lastName"
+                                   class="form-control"
+                                   autocomplete="family-name" />
+                            <span asp-validation-for="lastName"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="email"
+                                   class="form-label"></label>
+                            <input asp-for="email"
+                                   class="form-control"
+                                   autocomplete="email" />
+                            <span asp-validation-for="email"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Password"
+                                   class="form-label"></label>
+                            <input asp-for="Password"
+                                   class="form-control"
+                                   autocomplete="new-password" />
+                            <span asp-validation-for="Password"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="Role"
+                                   class="form-label">Account type</label>
+                            <select asp-for="Role" class="form-select">
+                                <option value="Participant">Participant</option>
+                                <option value="Organiser">Organiser</option>
+                            </select>
+                            <span asp-validation-for="Role"
+                                  class="text-danger"></span>
+                        </div>
+
+                        <button type="submit"
+                                class="btn btn-primary w-100">
+                            Create Account
+                        </button>
+                    </form>
+
+                    <p class="text-center mt-4 mb-0">
+                        Already registered?
+                        <a asp-controller="Auth"
+                           asp-action="Login">Log in</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,96 @@
+﻿@{
+    ViewData["Title"] = "Home";
+}
+
+<section class="hero-section">
+    <div class="hero-content">
+        <span class="hero-label">WELCOME TO RACEDAY</span>
+
+        <h1>Your race.<br />Your journey.<br /><span>Your finish line.</span></h1>
+
+        <p>
+            Discover exciting running, walking and cycling events.
+            Whether you're participating or organising, RaceDay brings
+            the racing community together.
+        </p>
+
+        <a asp-controller="Events" asp-action="Index" class="btn btn-success btn-lg">
+            Explore Events
+        </a>
+    </div>
+</section>
+
+<section class="container my-5">
+    <div class="text-center mb-4">
+        <h2>Be Part of RaceDay</h2>
+        <p>Everything you need, whether you're on the track or behind the event.</p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card h-100 home-role-card participant-card">
+                <div class="card-body p-4">
+                    <h3>For Participants</h3>
+                    <p>Find your next challenge and take part in exciting events.</p>
+                    <ul>
+                        <li>Discover upcoming events</li>
+                        <li>Enrol in your favourite races</li>
+                        <li>Track your enrolments</li>
+                        <li>View your race results</li>
+                    </ul>
+                    <a asp-controller="Events" asp-action="Index" class="btn btn-primary">
+                        Find an Event
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100 home-role-card organiser-card">
+                <div class="card-body p-4">
+                    <h3>For Organisers</h3>
+                    <p>Bring your sporting events to life with RaceDay.</p>
+                    <ul>
+                        <li>Create and manage events</li>
+                        <li>Organise event categories</li>
+                        <li>Manage participant enrolments</li>
+                        <li>Publish race results</li>
+                    </ul>
+                    <a asp-controller="Auth" asp-action="Login" class="btn btn-success">
+                        Organise an Event
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="race-categories-section py-5">
+    <div class="container text-center">
+        <h2>Find Your Race</h2>
+        <p>Choose your challenge. Make every finish count.</p>
+
+        <div class="row g-3 mt-3">
+            <div class="col-md-4">
+                <div class="category-card">
+                    <h4>Running</h4>
+                    <p>Push your limits, one step at a time.</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="category-card">
+                    <h4>Walking</h4>
+                    <p>Every step is progress.</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="category-card">
+                    <h4>Cycling</h4>
+                    <p>Discover new routes and challenges.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

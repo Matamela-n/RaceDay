@@ -1,0 +1,575 @@
+﻿@inject IHttpClientFactory HttpClientFactory
+@model List<RaceDay_Web.Models.EventViewModel>
+
+@{
+    ViewData["Title"] = "Organiser Dashboard";
+
+    var apiBaseUrl = HttpClientFactory
+        .CreateClient("RaceDayApi")
+        .BaseAddress?.ToString()?.TrimEnd('/');
+}
+
+<div class="container mt-4 organiser-dashboard">
+
+    <!-- Dashboard Header -->
+    <div class="dashboard-header mb-4">
+
+        <div>
+            <span class="dashboard-label">RACEDAY MANAGEMENT</span>
+            <h2>Organiser Dashboard</h2>
+            <p class="text-muted">
+                Your events, your participants, all in one place.
+            </p>
+        </div>
+
+        <div class="dashboard-actions">
+
+            <a asp-controller="OrganiserDashboard"
+               asp-action="CreateEvent"
+               class="btn btn-success">
+                + Create Event
+            </a>
+
+            <a asp-controller="Events"
+               asp-action="Index"
+               class="btn btn-outline-primary">
+                Browse Events
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- Notifications -->
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            @TempData["SuccessMessage"]
+
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert">
+            </button>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @TempData["ErrorMessage"]
+
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert">
+            </button>
+        </div>
+    }
+
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="alert alert-danger">
+            @ViewBag.ErrorMessage
+        </div>
+    }
+
+    <!-- Dashboard Statistics -->
+    <div class="row g-3 mb-5">
+
+        <div class="col-md-4">
+            <div class="stat-card stat-blue">
+
+                <div class="stat-icon">🏁</div>
+
+                <div>
+                    <p>MY EVENTS</p>
+                    <h2>@ViewBag.TotalEvents</h2>
+                    <span>Events created by you</span>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="stat-card stat-green">
+
+                <div class="stat-icon">👥</div>
+
+                <div>
+                    <p>TOTAL ENROLMENTS</p>
+                    <h2>@ViewBag.TotalEnrolments</h2>
+                    <span>Participant registrations</span>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="stat-card stat-orange">
+
+                <div class="stat-icon">📅</div>
+
+                <div>
+                    <p>UPCOMING EVENTS</p>
+                    <h2>@ViewBag.UpcomingEvents</h2>
+                    <span>Events scheduled ahead</span>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Management Cards -->
+    <div class="section-heading mb-3">
+
+        <div>
+            <span class="dashboard-label">YOUR WORKSPACE</span>
+            <h3>Event Management</h3>
+            <p class="text-muted">
+                Manage every part of your sporting events.
+            </p>
+        </div>
+
+    </div>
+
+    <div class="row g-3 mb-5">
+
+        <div class="col-md-4">
+            <div class="management-card">
+
+                <div class="management-icon">◈</div>
+                <h5>Categories</h5>
+
+                <p>
+                    Manage event categories, race types and distances.
+                </p>
+
+                <a asp-controller="Category"
+                   asp-action="Index"
+                   class="management-link">
+                    Manage Categories →
+                </a>
+
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="management-card">
+
+                <div class="management-icon">🏆</div>
+                <h5>Race Results</h5>
+
+                <p>
+                    Record and manage participant race performances.
+                </p>
+
+                <a asp-controller="OrganiserDashboard"
+                   asp-action="Results"
+                   class="management-link">
+                    Manage Results →
+                </a>
+
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="management-card">
+
+                <div class="management-icon">👥</div>
+                <h5>Participant Enrolments</h5>
+
+                <p>
+                    View registrations and manage participant enrolments.
+                </p>
+
+                <a asp-controller="OrganiserDashboard"
+                   asp-action="Enrolments"
+                   class="management-link">
+                    View Enrolments →
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- My Events -->
+    <div class="section-heading mb-3">
+
+        <div>
+            <span class="dashboard-label">EVENT OVERVIEW</span>
+            <h3>My Events</h3>
+
+            <p class="text-muted">
+                Keep track of the events you organise.
+            </p>
+        </div>
+
+    </div>
+
+    @if (Model != null && Model.Any())
+    {
+        <div class="row g-4">
+
+            @foreach (var item in Model)
+            {
+                <div class="col-md-6 col-lg-4">
+
+                    <div class="event-card h-100">
+
+                        <!-- EVENT BANNER -->
+                        @if (!string.IsNullOrEmpty(item.BannerImagePath))
+                        {
+                            <img src="@(apiBaseUrl + item.BannerImagePath)"
+                                 alt="@item.EventName banner"
+                                 class="img-fluid w-100"
+                                 style="height:200px; object-fit:cover;" />
+                        }
+                        else
+                        {
+                            <div class="bg-light d-flex align-items-center justify-content-center"
+                                 style="height:200px;">
+
+                                <span class="text-muted">
+                                    No event banner uploaded
+                                </span>
+
+                            </div>
+                        }
+
+                        <div class="event-card-top">
+
+                            <span class="event-type-badge">
+                                @item.EventType
+                            </span>
+
+                            <span class="event-category-count">
+                                @(item.Categories?.Count ?? 0) Categories
+                            </span>
+
+                        </div>
+
+                        <div class="event-card-body">
+
+                            <h5>@item.EventName</h5>
+
+                            <div class="event-information">
+
+                                <p>
+                                    <strong>📅 Date</strong>
+
+                                    <span>
+                                        @item.EventDate.ToString("dd MMM yyyy HH:mm")
+                                    </span>
+                                </p>
+
+                                <p>
+                                    <strong>📍 Location</strong>
+
+                                    <span>
+                                        @item.Location
+                                    </span>
+                                </p>
+
+                            </div>
+
+                            <p class="event-description">
+                                @item.Description
+                            </p>
+
+                            <div class="event-card-footer">
+
+                                <a asp-controller="Events"
+                                   asp-action="Details"
+                                   asp-route-id="@item.EventID"
+                                   class="btn btn-primary btn-sm">
+                                    View Event
+                                </a>
+
+                                <a asp-controller="OrganiserDashboard"
+                                   asp-action="EditEvent"
+                                   asp-route-id="@item.EventID"
+                                   class="btn btn-outline-primary btn-sm">
+                                    Edit
+                                </a>
+
+                                <form asp-controller="OrganiserDashboard"
+                                      asp-action="DeleteEvent"
+                                      asp-route-id="@item.EventID"
+                                      method="post"
+                                      class="d-inline"
+                                      onsubmit="return confirm('Are you sure you want to delete this event? This action cannot be undone.');">
+
+                                    @Html.AntiForgeryToken()
+
+                                    <button type="submit"
+                                            class="btn btn-danger btn-sm">
+                                        Delete
+                                    </button>
+
+                                </form>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            }
+
+        </div>
+    }
+    else
+    {
+        <div class="empty-events">
+
+            <div class="empty-events-icon">🏁</div>
+
+            <h4>No events yet</h4>
+
+            <p>
+                You haven't created any events.
+                Start organising your first race today.
+            </p>
+
+            <a asp-controller="OrganiserDashboard"
+               asp-action="CreateEvent"
+               class="btn btn-success">
+                + Create Your First Event
+            </a>
+
+        </div>
+    }
+</div>
+
+<style>
+    /* =====================================
+           RACEDAY ORGANISER DASHBOARD ENHANCEMENT
+        ===================================== */
+
+    .organiser-dashboard {
+        color: #14233f;
+    }
+
+        /* Dashboard header */
+        .organiser-dashboard .dashboard-header {
+            background: linear-gradient(120deg, #14233f, #203b61);
+            padding: 32px;
+            border-radius: 18px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            box-shadow: 0 6px 20px rgba(20, 35, 63, .10);
+        }
+
+            .organiser-dashboard .dashboard-header h2 {
+                color: white;
+                font-weight: 800;
+                margin-top: 10px;
+            }
+
+            .organiser-dashboard .dashboard-header p {
+                color: #dce5f1 !important;
+            }
+
+        .organiser-dashboard .dashboard-label {
+            color: #8ebd35;
+            font-size: .75rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+        }
+
+        /* Header buttons */
+        .organiser-dashboard .dashboard-header .btn-success {
+            background: #b4f542;
+            border-color: #b4f542;
+            color: #14233f;
+            font-weight: 700;
+        }
+
+            .organiser-dashboard .dashboard-header .btn-success:hover {
+                background: #a2e832;
+                border-color: #a2e832;
+            }
+
+        .organiser-dashboard .dashboard-header .btn-outline-primary {
+            border-color: white;
+            color: white;
+        }
+
+            .organiser-dashboard .dashboard-header .btn-outline-primary:hover {
+                background: white;
+                color: #14233f;
+            }
+
+        /* Statistics cards */
+        .organiser-dashboard .stat-card {
+            border: 1px solid #e7ebf2;
+            border-radius: 15px;
+            padding: 24px;
+            min-height: 145px;
+            background: white;
+            box-shadow: 0 4px 15px rgba(20, 35, 63, .06);
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+
+            .organiser-dashboard .stat-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 9px 22px rgba(20, 35, 63, .11);
+            }
+
+            .organiser-dashboard .stat-card h2 {
+                color: #14233f;
+                font-weight: 800;
+            }
+
+            .organiser-dashboard .stat-card p {
+                font-weight: 800;
+                font-size: .8rem;
+                letter-spacing: .6px;
+            }
+
+            .organiser-dashboard .stat-card span {
+                color: #6c7890;
+                font-size: .85rem;
+            }
+
+        /* Management section */
+        .organiser-dashboard .section-heading h3 {
+            color: #14233f;
+            font-weight: 800;
+        }
+
+        .organiser-dashboard .management-card {
+            height: 100%;
+            padding: 25px;
+            border: 1px solid #e7ebf2;
+            border-radius: 15px;
+            background: white;
+            box-shadow: 0 4px 14px rgba(20, 35, 63, .05);
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+
+            .organiser-dashboard .management-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 9px 22px rgba(20, 35, 63, .10);
+            }
+
+            .organiser-dashboard .management-card h5 {
+                color: #14233f;
+                font-weight: 750;
+                margin-top: 15px;
+            }
+
+            .organiser-dashboard .management-card p {
+                color: #6c7890;
+            }
+
+        .organiser-dashboard .management-icon {
+            font-size: 32px;
+            color: #84b82d;
+        }
+
+        .organiser-dashboard .management-link {
+            color: #527c19;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+            .organiser-dashboard .management-link:hover {
+                color: #14233f;
+            }
+
+        /* Event cards */
+        .organiser-dashboard .event-card {
+            border: 1px solid #e7ebf2;
+            border-radius: 15px;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 4px 15px rgba(20, 35, 63, .06);
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+
+            .organiser-dashboard .event-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 9px 22px rgba(20, 35, 63, .11);
+            }
+
+            .organiser-dashboard .event-card img {
+                width: 100%;
+                height: 200px;
+                object-fit: cover;
+            }
+
+        .organiser-dashboard .event-card-body {
+            padding: 20px;
+        }
+
+            .organiser-dashboard .event-card-body h5 {
+                color: #14233f;
+                font-weight: 750;
+            }
+
+        .organiser-dashboard .event-information p {
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+
+        .organiser-dashboard .event-description {
+            color: #64748b;
+        }
+
+        .organiser-dashboard .event-card-footer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* Empty state */
+        .organiser-dashboard .empty-events {
+            text-align: center;
+            padding: 45px 20px;
+            border: 1px dashed #cbd5e1;
+            border-radius: 15px;
+            background: #f8fafc;
+        }
+
+            .organiser-dashboard .empty-events h4 {
+                color: #14233f;
+                font-weight: 800;
+            }
+
+            .organiser-dashboard .empty-events p {
+                color: #64748b;
+            }
+
+    /* Responsive layout */
+    @@media (max-width: 768px) {
+        .organiser-dashboard .dashboard-header
+        C
+    {
+        padding: 25px 20px;
+    }
+
+    .organiser-dashboard .dashboard-header h2 {
+        font-size: 1.6rem;
+    }
+
+    .organiser-dashboard .dashboard-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .organiser-dashboard .stat-card {
+        min-height: 120px;
+    }
+
+    }
+</style>
+
