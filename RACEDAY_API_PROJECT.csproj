@@ -1,3 +1,4 @@
+
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
@@ -8,6 +9,7 @@
 
   <ItemGroup>
     <Compile Remove="RACEDAY_API_PROJECT.Tests/**/*.cs" />
+    <Compile Remove="RaceDay_Web/**/*.cs" />
   </ItemGroup>
 
   <ItemGroup>
