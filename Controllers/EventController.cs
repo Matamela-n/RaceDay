@@ -1,141 +1,226 @@
-﻿using System.Net.Http.Json;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using RaceDay_Web.Models;
+using Microsoft.EntityFrameworkCore;//enables the database query operations used by the new method.
+using RACEDAY_API_PROJECT.Data; // this imports the data folder so we can use the RaceDayDbContext.
+using RACEDAY_API_PROJECT.Models; // this allows us to use the models we created.
+using System.Security.Claims; // this allows us to read the logged-in user's ID from the authentication cookie.
 
-namespace RaceDay_Web.Controllers;
-
-[Authorize]
-public class EventsController : Controller
+namespace RACEDAY_API_PROJECT.Controllers
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-
-    public EventsController(IHttpClientFactory httpClientFactory)
+    [Route("api/[controller]")]
+    [ApiController]
+    public class EventController : ControllerBase
     {
-        _httpClientFactory = httpClientFactory;
-    }
+        private readonly RaceDayDbContext _context; // helps us to delete, read and update data.
 
-    public async Task<IActionResult> Index()
-    {
-        var client = _httpClientFactory.CreateClient("RaceDayApi");
-
-        try
+        public EventController(RaceDayDbContext context)
         {
-            var events = await client.GetFromJsonAsync<List<EventViewModel>>(
-                "api/Event");
-
-            return View(events ?? new List<EventViewModel>());
-        }
-        catch (HttpRequestException ex)
-        {
-            ViewBag.ErrorMessage = $"API connection error: {ex.Message}";
-            return View(new List<EventViewModel>());
-        }
-        catch (System.Text.Json.JsonException ex)
-        {
-            ViewBag.ErrorMessage = $"API response error: {ex.Message}";
-            return View(new List<EventViewModel>());
-        }
-    }
-
-    public async Task<IActionResult> Details(int id)
-    {
-        if (id <= 0)
-        {
-            return BadRequest();
+            _context = context;
         }
 
-        var client = _httpClientFactory.CreateClient("RaceDayApi");
+        [Authorize(Roles = "Organiser")]
+        // Only a logged-in Organiser can create an event.
 
-        try
+        [HttpPost]
+        // This allows us to add a new event to the database.
+
+        public async Task<ActionResult<Event>> CreateEvent(Event newEvent)
         {
-            var eventItem = await client.GetFromJsonAsync<EventViewModel>(
-                $"api/Event/{id}");
+            // Get the ID of the Organiser who is currently logged in.
+            // This ID comes from the RaceDayAuth cookie.
+            var organiserIdClaim = User.FindFirstValue(
+                ClaimTypes.NameIdentifier);
 
-            if (eventItem == null)
+            // If the ID cannot be found, the user is not authenticated.
+            if (organiserIdClaim == null)
+            {
+                return Unauthorized();
+            }
+
+            // Convert the ID from the cookie from a string to an integer.
+            int organiserID = int.Parse(organiserIdClaim);
+
+            // We use the ID of the logged-in Organiser.
+            // We do not trust an organiserID sent from Swagger.
+            newEvent.organiserID = organiserID;
+
+            // Adds the new event to the Events table.
+            _context.Events.Add(newEvent);
+
+            // Saves the new event to the database.
+            await _context.SaveChangesAsync();
+
+            // Returns 201 Created after the event is successfully added.
+            return CreatedAtAction(
+                nameof(GetEvent),
+                new { id = newEvent.eventID },
+                newEvent
+            );
+        }
+
+        [HttpGet("{id}")]
+        // Anyone can view an event.
+        public async Task<ActionResult<Event>> GetEvent(int id)
+        {
+            var raceEvent = await _context.Events
+                .Include(e => e.Categories)
+                .FirstOrDefaultAsync(e => e.eventID == id);
+
+            if (raceEvent == null)
             {
                 return NotFound();
             }
 
-            return View(eventItem);
-        }
-        catch (HttpRequestException)
-        {
-            return StatusCode(
-                StatusCodes.Status502BadGateway,
-                "Unable to retrieve the event from the RaceDay API.");
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            return StatusCode(
-                StatusCodes.Status502BadGateway,
-                "The RaceDay API returned invalid event data.");
-        }
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [Authorize(Roles = "Participant")]
-    public async Task<IActionResult> Enrol(
-        CreateEnrolmentViewModel model)
-    {
-        if (!ModelState.IsValid)
-        {
-            return RedirectToAction(
-                "Details",
-                new { id = model.eventID });
+            return raceEvent;
         }
 
-        var apiCookie = User.FindFirst("RaceDayApiCookie")?.Value;
+        [Authorize(Roles = "Organiser")]
+        // Only Organisers can update events.
 
-        if (string.IsNullOrWhiteSpace(apiCookie))
+        [HttpPut("{id}")]
+
+        public async Task<IActionResult> UpdateEvent(
+                    int id,
+                    Event updatedEvent)
         {
-            TempData["ErrorMessage"] =
-                "Your session has expired. Please log in again.";
+            // Get the ID of the logged-in Organiser.
+            var organiserIdClaim = User.FindFirstValue(
+                ClaimTypes.NameIdentifier);
 
-            return RedirectToAction("Details",
-                new { id = model.eventID });
-        }
-
-        var client = _httpClientFactory.CreateClient("RaceDayApi");
-
-        try
-        {
-            using var request = new HttpRequestMessage(
-                HttpMethod.Post,
-                "api/Enrolment");
-
-            request.Headers.TryAddWithoutValidation(
-                "Cookie",
-                $"RaceDayAuth={apiCookie}");
-
-            request.Content = JsonContent.Create(new
+            if (organiserIdClaim == null)
             {
-                categoryID = model.categoryID
+                return Unauthorized();
+            }
+
+            int organiserID = int.Parse(organiserIdClaim);
+
+            // Find the event that the Organiser wants to update.
+            var existingEvent = await _context.Events.FindAsync(id);
+
+            // If the event doesn't exist, return 404.
+            if (existingEvent == null)
+            {
+                return NotFound();
+            }
+
+            // Check that the logged-in Organiser actually owns
+            // this event.
+            if (existingEvent.organiserID != organiserID)
+            {
+                // The user is logged in, but does not own this event.
+                return Forbid();
+            }
+
+            // Update the event information.
+            existingEvent.eventName = updatedEvent.eventName;
+            existingEvent.eventDate = updatedEvent.eventDate;
+            existingEvent.location = updatedEvent.location;
+            existingEvent.eventType = updatedEvent.eventType;
+            existingEvent.description = updatedEvent.description;
+
+            // Save the changes to SQL Server.
+            await _context.SaveChangesAsync();
+
+            return Ok(existingEvent);
+        }
+
+
+        // ============================================================
+        // DELETE EVENT
+        // ============================================================
+
+        [Authorize(Roles = "Organiser")]
+        // Only Organisers can delete events.
+
+        [HttpDelete("{id}")]
+
+        public async Task<IActionResult> DeleteEvent(int id)
+        {
+            // Get the ID of the logged-in Organiser.
+            var organiserIdClaim = User.FindFirstValue(
+                ClaimTypes.NameIdentifier);
+
+            if (organiserIdClaim == null)
+            {
+                return Unauthorized();
+            }
+
+            int organiserID = int.Parse(organiserIdClaim);
+
+            // Find the event in the database.
+            var raceEvent = await _context.Events.FindAsync(id);
+
+            // If the event doesn't exist, return 404.
+            if (raceEvent == null)
+            {
+                return NotFound();
+            }
+
+            // Check that the logged-in Organiser owns this event.
+            if (raceEvent.organiserID != organiserID)
+            {
+                return Forbid();
+            }
+
+            // Remove the event from the database.
+            _context.Events.Remove(raceEvent);
+
+            // Save the deletion.
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Event deleted successfully."
             });
-
-            using var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
-            {
-                TempData["SuccessMessage"] =
-                    "You have successfully enrolled in this event category!";
-            }
-            else
-            {
-                TempData["ErrorMessage"] =
-                    await response.Content.ReadAsStringAsync();
-            }
         }
-        catch (HttpRequestException)
-        {
-            TempData["ErrorMessage"] =
-                "Unable to connect to the RaceDay API.";
-        }
+    
+[Authorize(Roles = "Organiser")]
+[HttpGet("{id}/enrolments")]
+public async Task<IActionResult> GetEventEnrolments(int id)
+{
+var organiserIdClaim = User.FindFirstValue(
+ClaimTypes.NameIdentifier);
 
-        return RedirectToAction(
-            "Details",
-            new { id = model.eventID });
-    }
-
+if (organiserIdClaim == null)
+{
+ return Unauthorized();
 }
+
+int organiserID = int.Parse(organiserIdClaim);
+
+var raceEvent = await _context.Events.FindAsync(id);
+
+if (raceEvent == null)
+{
+return NotFound("Event not found.");
+}
+if (raceEvent.organiserID != organiserID)
+{
+ return Forbid();
+}
+var enrolments = await _context.Enrolments.Where(e => e.category.eventID == id).Select(e => new
+{
+e.enrolmentID,
+e.participantID,
+e.categoryID,
+e.enrolmentDate,
+e.status
+})
+.ToListAsync();
+return Ok(enrolments);
+        }
+
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<Event>>> GetEvents()
+        {
+            var events = await _context.Events
+                .Include(e => e.Categories)
+                .ToListAsync();
+
+            return Ok(events);
+        }
+
+    }
+}
+
