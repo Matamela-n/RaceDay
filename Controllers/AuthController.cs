@@ -1,266 +1,146 @@
-﻿using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Text.Json;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
-using RaceDay_Web.Models;
+using Microsoft.EntityFrameworkCore;
+using RACEDAY_API_PROJECT.Data;
+using RACEDAY_API_PROJECT.Models;
 
-namespace RaceDay_Web.Controllers;
+namespace RACEDAY_API_PROJECT.Controllers;
 
-public class AuthController : Controller
+[Route("api/[controller]")]
+[ApiController]
+public class AuthController : ControllerBase
 {
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly RaceDayDbContext _context;
 
-    public AuthController(IHttpClientFactory httpClientFactory)
+    public AuthController(RaceDayDbContext context)
     {
-        _httpClientFactory = httpClientFactory;
+        _context = context;
     }
 
-    // Display the registration page.
-    [HttpGet]
-    public IActionResult Register()
-    {
-        return View(new RegisterViewModel());
-    }
-
-    // Send registration details to the existing API.
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Register(RegisterViewModel model)
+    [HttpPost("register")]
+    public async Task<ActionResult> Register(RegisterDto request)
     {
         if (!ModelState.IsValid)
         {
-            return View(model);
+            return BadRequest(ModelState);
         }
 
-        var client = _httpClientFactory.CreateClient("RaceDayApi");
+        var email = request.email.Trim();
+        var normalisedRole = request.role.Trim();
 
-        try
+        if (!string.Equals(normalisedRole, "Participant", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(normalisedRole, "Organiser", StringComparison.OrdinalIgnoreCase))
         {
-            var response = await client.PostAsJsonAsync(
-                "api/auth/register",
-                new
-                {
-                    firstName = model.firstName,
-                    lastName = model.lastName,
-                    email = model.email,
-                    password = model.Password,
-                    role = model.Role
-                });
-
-            if (response.IsSuccessStatusCode)
-            {
-                TempData["Success"] =
-                    "Registration successful. You can now log in.";
-
-                return RedirectToAction(nameof(Login));
-            }
-
-            ModelState.AddModelError(
-                string.Empty,
-                "Registration failed. Check your details or try another email.");
-
-            return View(model);
-        }
-        catch (HttpRequestException)
-        {
-            ModelState.AddModelError(
-                string.Empty,
-                "Cannot connect to RaceDay API. Please try again.");
-
-            return View(model);
-        }
-    }
-
-    // Display the login page.
-    [HttpGet]
-    public IActionResult Login()
-    {
-        return View(new LoginViewModel());
-    }
-
-    // Validate credentials through the existing API.
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Login(LoginViewModel model)
-    {
-        if (!ModelState.IsValid)
-        {
-            return View(model);
+            return BadRequest("Role must be Participant or Organiser.");
         }
 
-        var client = _httpClientFactory.CreateClient("RaceDayApi");
+        var participantExists = await _context.Participants
+            .AnyAsync(p => p.email.ToLower() == email.ToLower());
 
-        try
+        var organiserExists = await _context.EventOrganisers
+            .AnyAsync(o => o.email.ToLower() == email.ToLower());
+
+        if (participantExists || organiserExists)
         {
-            var response = await client.PostAsJsonAsync(
-                "api/auth/login",
-                new
-                {
-                    email = model.Email,
-                    password = model.Password,
-                    role = model.Role
-                });
+            return BadRequest("Email is already registered.");
+        }
 
-            if (!response.IsSuccessStatusCode)
+        if (string.Equals(normalisedRole, "Participant", StringComparison.OrdinalIgnoreCase))
+        {
+            var participant = new Participant
             {
-                ModelState.AddModelError(
-                    string.Empty,
-                    "Login failed. Check your email, password and account type.");
-
-                return View(model);
-            }
-
-            var loginResult =
-                await response.Content.ReadFromJsonAsync<LoginResponseModel>();
-
-            // Validate the response returned by the API.
-            if (loginResult == null ||
-                loginResult.UserID <= 0 ||
-                string.IsNullOrWhiteSpace(loginResult.Email) ||
-                string.IsNullOrWhiteSpace(loginResult.Role) ||
-                !string.Equals(
-                    loginResult.Email,
-                    model.Email,
-                    StringComparison.OrdinalIgnoreCase) ||
-                !IsAllowedRole(loginResult.Role) ||
-                !string.Equals(
-                    loginResult.Role,
-                    model.Role,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                ModelState.AddModelError(
-                    string.Empty,
-                    "The API returned an invalid login response.");
-
-                return View(model);
-            }
-
-            // Create a verified MVC identity from the API response.
-
-            // Capture the API authentication cookie.
-            string? apiCookieValue = null;
-
-            if (response.Headers.TryGetValues(
-                "Set-Cookie", out var setCookieHeaders))
-            {
-                var authCookie = setCookieHeaders.FirstOrDefault(header =>
-                    header.StartsWith(
-                        "RaceDayAuth=",
-                        StringComparison.OrdinalIgnoreCase));
-
-                if (authCookie != null)
-                {
-                    var cookiePair = authCookie.Split(';', 2)[0];
-                    apiCookieValue =
-                        cookiePair["RaceDayAuth=".Length..];
-                }
-            }
-
-            if (string.IsNullOrWhiteSpace(apiCookieValue))
-            {
-                ModelState.AddModelError(
-                    string.Empty,
-                    "Login succeeded, but the API authentication cookie was not received.");
-
-                return View(model);
-            }
-
-            // Create a verified MVC identity from the API response.
-            var claims = new List<Claim>
-            {
-                new(
-                    ClaimTypes.NameIdentifier,
-                    loginResult.UserID.ToString()),
-
-                new(
-                    ClaimTypes.Name,
-                    loginResult.Email),
-
-                new(
-                    ClaimTypes.Email,
-                    loginResult.Email),
-
-                new(
-                    ClaimTypes.Role,
-                    loginResult.Role),
-
-                // Stored inside the protected MVC authentication ticket.
-                new(
-                    "RaceDayApiCookie",
-                    apiCookieValue)
+                firstName = request.firstName,
+                lastName = request.lastName,
+                email = email,
+                password = BCrypt.Net.BCrypt.HashPassword(request.password)
             };
 
+            _context.Participants.Add(participant);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
             {
+                message = "Registration successful.",
+                userId = participant.participantID,
+                role = "Participant"
+            });
+        }
 
+        var organiser = new EventOrganiser
+        {
+            firstName = request.firstName,
+            lastName = request.lastName,
+            email = email,
+            password = BCrypt.Net.BCrypt.HashPassword(request.password)
+        };
 
-                var identity = new ClaimsIdentity(
-                    claims,
-                    CookieAuthenticationDefaults.AuthenticationScheme);
+        _context.EventOrganisers.Add(organiser);
+        await _context.SaveChangesAsync();
 
-                var principal = new ClaimsPrincipal(identity);
+        return Ok(new
+        {
+            message = "Registration successful.",
+            userId = organiser.organiserID,
+            role = "Organiser"
+        });
+    }
 
-                // Issue the protected authentication cookie.
-                await HttpContext.SignInAsync(
-                    CookieAuthenticationDefaults.AuthenticationScheme,
-                    principal);
+    [HttpPost("login")]
+    public async Task<ActionResult> Login(LoginDto request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
 
-                // Redirect according to the API-confirmed role.
-                if (string.Equals(
-                    loginResult.Role,
-                    "Organiser",
-                    StringComparison.OrdinalIgnoreCase))
-                {
-                    return RedirectToAction(
-                        "Index",
-                        "OrganiserDashboard");
-                }
+        var email = request.email.Trim();
+        var normalisedRole = request.role.Trim();
 
-                return RedirectToAction(
-                    "Index",
-                    "ParticipantDashboard");
+        if (string.Equals(normalisedRole, "Participant", StringComparison.OrdinalIgnoreCase))
+        {
+            var participant = await _context.Participants
+                .FirstOrDefaultAsync(p => p.email.ToLower() == email.ToLower());
+
+            if (participant == null)
+            {
+                return Unauthorized("Invalid email or password.");
             }
+
+            if (!BCrypt.Net.BCrypt.Verify(request.password, participant.password))
+            {
+                return Unauthorized("Invalid email or password.");
+            }
+
+            return Ok(new
+            {
+                userID = participant.participantID,
+                email = participant.email,
+                role = "Participant"
+            });
         }
-        catch (HttpRequestException)
+
+        if (string.Equals(normalisedRole, "Organiser", StringComparison.OrdinalIgnoreCase))
         {
-            ModelState.AddModelError(
-                string.Empty,
-                "Cannot connect to RaceDay API. Please try again.");
+            var organiser = await _context.EventOrganisers
+                .FirstOrDefaultAsync(o => o.email.ToLower() == email.ToLower());
 
-            return View(model);
+            if (organiser == null)
+            {
+                return Unauthorized("Invalid email or password.");
+            }
+
+            if (!BCrypt.Net.BCrypt.Verify(request.password, organiser.password))
+            {
+                return Unauthorized("Invalid email or password.");
+            }
+
+            return Ok(new
+            {
+                userID = organiser.organiserID,
+                email = organiser.email,
+                role = "Organiser"
+            });
         }
-        catch (JsonException)
-        {
-            ModelState.AddModelError(
-                string.Empty,
-                "The API returned an unreadable login response.");
 
-            return View(model);
-        }
-    }
-
-    // Sign out of the MVC application.
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Logout()
-    {
-        await HttpContext.SignOutAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme);
-
-        return RedirectToAction(nameof(Login));
-    }
-
-    private static bool IsAllowedRole(string role)
-    {
-        return string.Equals(
-                   role,
-                   "Participant",
-                   StringComparison.OrdinalIgnoreCase)
-               ||
-               string.Equals(
-                   role,
-                   "Organiser",
-                   StringComparison.OrdinalIgnoreCase);
+        return BadRequest("Role must be Participant or Organiser.");
     }
 }
