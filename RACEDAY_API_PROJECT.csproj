@@ -7,11 +7,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-  <ItemGroup>
+<ItemGroup>
   <Compile Remove="RACEDAY_API_PROJECT.Tests/**/*.cs" />
   <Compile Remove="RaceDay_Web/**/*.cs" />
   <Content Remove="RaceDay_Web/**/*.cshtml" />
   <RazorGenerate Remove="RaceDay_Web/**/*.cshtml" />
+  <None Remove="RaceDay_Web/**/*.cshtml.css" />
 </ItemGroup>
 
   <ItemGroup>
