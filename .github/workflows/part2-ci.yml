@@ -1,4 +1,3 @@
-
 name: RaceDay Part 2 CI
 
 on:
@@ -22,6 +21,9 @@ jobs:
 
       - name: Build API
         run: dotnet build RACEDAY_API_PROJECT.csproj --configuration Release
+
+      - name: Build MVC Web
+        run: dotnet build RaceDay_Web/RaceDay_Web.csproj --configuration Release
 
       - name: Run unit tests
         run: dotnet test RACEDAY_API_PROJECT.Tests/RACEDAY_API_PROJECT.Tests.csproj --configuration Release
